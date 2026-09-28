@@ -1,0 +1,7 @@
+# LF en todo el repo: hashes de datos/código y el log append-only deben ser idénticos en Windows y Linux.
+* text=auto eol=lf
+*.csv text eol=lf
+*.json text eol=lf
+*.ipynb text eol=lf
+*.joblib binary
+*.png binary

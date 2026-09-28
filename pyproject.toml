@@ -1,0 +1,37 @@
+[project]
+name = "baloto-ml"
+version = "0.1.0"
+description = "Experimento educativo: un pipeline de ML reproducible que busca (y no encuentra) señal en los sorteos del Baloto."
+readme = "README.md"
+authors = [{ name = "Ronaldo Duran" }]
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.12",
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "requests>=2.32",
+]
+
+[project.scripts]
+baloto-ml = "baloto_ml.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

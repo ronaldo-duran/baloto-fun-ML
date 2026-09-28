@@ -1,0 +1,21 @@
+# Entorno
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.env
+
+# Herramientas
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Artefactos derivados (se regeneran con el pipeline)
+data/interim/
+data/processed/features/
+models/_staging/
+
+# Streamlit
+.streamlit/secrets.toml
