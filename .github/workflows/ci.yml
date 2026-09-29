@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Lint y tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Python y dependencias (sin el grupo de notebooks)
+        run: |
+          uv python install 3.12
+          uv sync --frozen --no-default-groups --group dev --group app
+
+      - name: Ruff
+        run: |
+          uv run ruff check src tests scripts app
+          uv run ruff format --check src tests scripts app
+
+      - name: Tests
+        run: uv run pytest -q
+
+      - name: app/requirements.txt al día con uv.lock
+        run: |
+          uv export --no-default-groups --group app --no-emit-project --no-hashes \
+            --format requirements-txt --quiet -o /tmp/requirements.txt
+          diff <(grep -v '^#' app/requirements.txt) <(grep -v '^#' /tmp/requirements.txt)

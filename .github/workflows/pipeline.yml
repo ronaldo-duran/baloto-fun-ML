@@ -1,0 +1,84 @@
+name: Pipeline de reentrenamiento
+
+# Experimento educativo. El Baloto es aleatorio; este modelo no predice resultados.
+#
+# Corre tras cada día de sorteo (lunes, miércoles y sábado por la noche), cuando se sube un CSV a
+# data/incoming/ o a mano. Si no hay sorteos nuevos y validados, termina sin hacer nada.
+# Ingesta desactivable: variable del repositorio INGEST_ENABLED=false (o el input manual).
+# Fuente web (baloto.com): INGEST_WEB=true por defecto; si el sitio bloquea las IPs de GitHub,
+# el pipeline sigue con la fuente manual (data/incoming/*.csv).
+
+on:
+  schedule:
+    - cron: "0 11 * * 0,2,4" # domingo, martes y jueves, 06:00 hora de Colombia
+  push:
+    branches: [main]
+    paths: ["data/incoming/**"]
+  workflow_dispatch:
+    inputs:
+      ingest:
+        description: "Buscar sorteos nuevos (apágalo para una corrida en seco)"
+        type: boolean
+        default: true
+      web:
+        description: "Intentar traer sorteos de baloto.com"
+        type: boolean
+        default: true
+      force:
+        description: "Reentrenar aunque no haya datos nuevos"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # format() evita que un `false` explícito del input caiga en el valor por defecto.
+      INGEST_ENABLED: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.ingest) || vars.INGEST_ENABLED || 'true' }}
+      INGEST_WEB: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.web) || vars.INGEST_WEB || 'true' }}
+      FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force && '--force' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Python y dependencias
+        run: |
+          uv python install 3.12
+          uv sync --frozen --no-default-groups --group dev --group app
+
+      - name: Tests
+        run: uv run pytest -q
+
+      - name: Pipeline (ingest -> validate -> ... -> predict_next -> log)
+        run: uv run baloto-ml pipeline $FORCE
+
+      - name: Los registros en vivo solo crecieron (append-only)
+        run: uv run python scripts/check_append_only.py --base HEAD
+
+      - name: Resumen
+        run: uv run python scripts/pipeline_summary.py >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit y push de datos, modelo y registro
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data models predictions reports
+          if git diff --cached --quiet; then
+            echo "Sin cambios: nada que commitear."
+            exit 0
+          fi
+          git commit -m "chore(pipeline): actualización automática $(date -u +%Y-%m-%d)" \
+                     -m "Experimento educativo. El Baloto es aleatorio; este modelo no predice resultados."
+          git pull --rebase origin main
+          git push origin HEAD:main

@@ -8,6 +8,47 @@ sorteo es aleatorio. El valor del proyecto está en la ingeniería (validación 
 reentrenamiento automatizado y un registro de predicciones en vivo que nadie puede maquillar),
 no en "ganarle" a la lotería.
 
+**El resultado, en corto** (634 sorteos por juego, 384 de prueba en walk-forward):
+
+- Ni las balotas ni la superbalota se desvían del azar, y Baloto y Revancha son independientes.
+- Ningún modelo supera al azar: 0,53-0,57 aciertos por sorteo, frente a 0,581 esperados.
+- Todos quedan por debajo del baseline constante en log-loss, entre −0,4 % y −5,1 %.
+- La permutación y los historiales sintéticos con reentrenamiento lo confirman: ningún p-valor baja
+  de 0,23.
+- El método sí detecta una señal cuando se planta en datos sintéticos (control positivo), así que
+  el "no" es informativo.
+- Las predicciones nuevas se registran antes de cada sorteo y se comparan con el resultado real en
+  [`predictions/`](predictions/).
+
+## Cómo ejecutarlo
+
+Requisitos: [uv](https://docs.astral.sh/uv/) (instala Python 3.12 automáticamente). En Windows sin
+`make`, usa `mingw32-make` o directamente `uv run baloto-ml <etapa>`.
+
+```bash
+uv sync                      # entorno y dependencias
+make help                    # objetivos disponibles
+make pipeline                # todas las etapas; sin sorteos nuevos no hace nada
+make app                     # la app de Streamlit en http://localhost:8501
+make test                    # tests (lint: make lint)
+```
+
+Etapas sueltas (`uv run baloto-ml <etapa>` o `make <objetivo>`):
+
+```bash
+uv run baloto-ml scrape      # trae de baloto.com los sorteos que falten (a data/incoming/)
+uv run baloto-ml ingest      # 1. detecta sorteos nuevos
+uv run baloto-ml validate    # 2. valida y actualiza data/processed/draws.csv
+uv run baloto-ml build-features   # 3. features sin fuga
+uv run baloto-ml train       # 4. entrena los modelos
+uv run baloto-ml evaluate    # 5. walk-forward, Monte Carlo y chequeos de datos (~1 min)
+uv run baloto-ml register    # 6. registra el modelo
+uv run baloto-ml predict-next     # 7. predicción del próximo sorteo (antes de que ocurra)
+uv run baloto-ml log         # 8. concilia predicciones con resultados
+uv run baloto-ml significance     # permutación e historiales sintéticos (lento: ~1,5 h)
+uv run python scripts/run_notebooks.py   # re-ejecuta los notebooks (outputs versionados)
+```
+
 ## El juego en números
 
 | Concepto | Valor |
@@ -27,14 +68,13 @@ regresión sobre su valor.
 | Fuente | Qué trae | Formato |
 |---|---|---|
 | `data/raw/resultados_{baloto,revancha}.csv` | Histórico 2021-05-01 -> 2026-05-23 (sorteos 2081-2660) | Original: `Date, C1..C5, SB, #Sorteo` |
-| `data/incoming/*.csv` | Sorteos nuevos (manuales o descargados); hoy, 2661-2714 (hasta el 2026-09-26) traídos de baloto.com | Esquema común, con columna `juego` |
+| `data/incoming/*.csv` | Sorteos nuevos, manuales o descargados; entre ellos, los 2661-2714 traídos de baloto.com | Esquema común, con columna `juego` |
 | baloto.com (`WebSource`) | Página pública por sorteo | Se guarda en `data/incoming/web_*.csv` |
 
-Estado actual de `data/processed/draws.csv`: **634 sorteos por juego** (2081-2714, del 2021-05-01 al
-2026-09-26), sin errores ni avisos, y Baloto/Revancha alineados 1:1 en fecha y numeración.
-
 **Esquema común** (`data/processed/draws.csv`): `fecha, n_sorteo, juego, b1..b5, superbalota`, con
-`juego` en {`baloto`, `revancha`} y las balotas ordenadas de menor a mayor.
+`juego` en {`baloto`, `revancha`} y las balotas ordenadas de menor a mayor. Al 2026-09-26 tiene
+634 sorteos por juego (2081-2714), sin errores ni avisos, y Baloto y Revancha alineados 1:1 en
+fecha y numeración.
 
 **Validaciones, por juego:** formato 5/43 + 1/16, balotas sin repetir, rangos, sin filas ni
 números de sorteo duplicados, numeración sin saltos, fechas crecientes, fechas dentro del
@@ -59,8 +99,7 @@ resultado queda en `reports/validation.json`.
 Antes de entrenar nada se comprueba lo que tendría que fallar para que existiera señal: que las
 balotas salgan con la misma frecuencia (uniformidad) y que los sorteos sean independientes. Detalle
 y gráficos en [`notebooks/01_exploracion_uniformidad.ipynb`](notebooks/01_exploracion_uniformidad.ipynb);
-cifras en `reports/analysis.json`. Son 634 sorteos por juego, y los p-valores Monte Carlo usan
-10.000 historiales simulados.
+cifras en `reports/analysis.json`. Los p-valores Monte Carlo usan 10.000 historiales simulados.
 
 | Uniformidad | Baloto | Revancha |
 |---|---|---|
@@ -218,7 +257,8 @@ del código, el commit y las versiones de las librerías. El identificador `<fec
 sorteo>_<hash>` depende solo de las entradas (datos, código y configuración): entrenar otra vez
 con lo mismo produce el mismo id. `latest` es un archivo de texto, porque los symlinks no son
 portables en Windows. Se conservan las 10 versiones más recientes en el árbol de trabajo, y git
-guarda el resto.
+guarda el resto. No se usa MLflow: añadiría una dependencia pesada y un `mlruns/` que no conviene
+versionar desde CI.
 
 ## Registro de predicciones en vivo
 
@@ -240,6 +280,27 @@ predicción queda escrita, con fecha y hora, **antes** del sorteo, y nunca se mo
   `scripts/check_append_only.py` (`make check-log`) comprueba contra git que el contenido
   anterior sea un prefijo exacto del nuevo. El CI lo corre antes de cada commit, y el historial de
   git más los logs de GitHub Actions sirven de sello de tiempo externo.
+
+## Automatización con GitHub Actions
+
+- **`ci.yml`**, en cada push y pull request: ruff, los tests y una verificación de que
+  `app/requirements.txt` coincide con `uv.lock`.
+- **`pipeline.yml`** corre el domingo, el martes y el jueves a las 06:00 (hora de Colombia), tras
+  los sorteos del sábado, el lunes y el miércoles. También corre al subir un CSV a
+  `data/incoming/` y a mano (*Run workflow*, con opciones para desactivar la ingesta, no usar la
+  web o forzar el reentrenamiento). Pasos: tests, luego `baloto-ml pipeline`, la verificación
+  append-only de los registros, el resumen de la corrida y el commit y push de datos, modelo,
+  registro y reportes, hecho por `github-actions[bot]`.
+- **Ingesta desactivable** con variables del repositorio (*Settings -> Secrets and variables ->
+  Actions -> Variables*): `INGEST_ENABLED=false` hace que el pipeline no busque nada, e
+  `INGEST_WEB=false` evita intentar baloto.com. No se necesitan secretos: el workflow usa el
+  `GITHUB_TOKEN` con permiso `contents: write`.
+- **Fuente manual.** Si baloto.com bloquea las IPs de GitHub, basta con correr `make scrape` en
+  local (o crear un CSV con el esquema común en `data/incoming/`) y hacer push: el workflow se
+  dispara solo, reentrena, registra la predicción del siguiente sorteo y concilia la anterior.
+
+GitHub pausa los workflows programados de repositorios públicos sin actividad durante 60 días; si
+eso pasa, basta con reactivarlo desde la pestaña *Actions*.
 
 ## App: el experimento, en modo juego
 
@@ -265,6 +326,28 @@ salen de `app/requirements.txt`, que Streamlit busca primero en la carpeta del a
 Está exportado de `uv.lock` con versiones exactas, para que el `model.joblib` cargue con la misma
 versión de scikit-learn con la que se entrenó; se regenera con `make requirements`. No requiere
 secretos. Cada push del pipeline redespliega la app con el modelo y el registro al día.
+
+## Estructura del repositorio
+
+```text
+app/                  app de Streamlit (3 páginas) y requirements.txt para Community Cloud
+data/raw/             histórico original (formato de Kaggle); no se modifica
+data/incoming/        sorteos nuevos, manuales o descargados de baloto.com
+data/processed/       draws.csv: el dataset validado en el esquema común
+models/<juego>/       registro de modelos: <fecha>_<hash>/ (model.joblib + metadata.json) y latest
+notebooks/            01 exploración y uniformidad, 02 la trampa, 03 resultados
+predictions/          registros en vivo (append-only)
+reports/              validación, análisis, evaluación, significancia, resumen en vivo y figuras
+scripts/              ejecución de notebooks, verificación append-only, resumen de CI
+src/baloto_ml/
+  data/               esquema, fuentes (histórico, manual, web), validación, codificación, calendario
+  features/           features sin fuga de información
+  models/             baselines, clasificadores, catálogo y registro
+  evaluation/         métricas, walk-forward, pruebas estadísticas, significancia, controles, trampa
+  live/               predict_next y conciliación
+  pipeline/           etapas y orquestación
+tests/                pytest: datos, fuga, codificación, modelos, pipeline, registro en vivo, app
+```
 
 ## Lecciones sobre validación y baselines
 
@@ -294,24 +377,18 @@ secretos. Cada push del pipeline redespliega la app con el modelo y el registro 
    una predicción audaz: es un defecto (aquí, de escalado). Las probabilidades imposibles son la
    prueba de cordura más barata.
 
-## Cómo ejecutarlo
+## Limitaciones
 
-Requisitos: [uv](https://docs.astral.sh/uv/) (instala Python 3.12 automáticamente).
+- El histórico disponible empieza en 2021 (634 sorteos por juego); con más historia las pruebas
+  tendrían más potencia, aunque no hay razón para esperar un resultado distinto.
+- El parser de baloto.com depende de la estructura actual del sitio: si cambia, `WebSource` falla
+  de forma explícita (`PageParseError`) y queda la fuente manual.
+- El registro en vivo solo avanza si llegan los resultados a tiempo: con datos atrasados, el
+  pipeline no registra predicciones (a propósito).
+- Proyecto personal y educativo, sin relación con el operador del Baloto.
 
-```bash
-uv sync                      # entorno y dependencias
-uv run baloto-ml scrape      # (opcional) trae de baloto.com los sorteos que falten
-uv run baloto-ml ingest      # detecta sorteos nuevos en data/raw y data/incoming
-uv run baloto-ml validate    # valida y actualiza data/processed/draws.csv
-uv run baloto-ml pipeline    # todas las etapas; sin sorteos nuevos no hace nada
-uv run baloto-ml evaluate    # uniformidad, independencia, walk-forward y Monte Carlo (~1 min)
-uv run baloto-ml significance            # permutación e historiales sintéticos (lento: ~1 h)
-uv run baloto-ml significance --quick    # la misma etapa con pocas simulaciones (prueba)
-uv run python scripts/run_notebooks.py   # re-ejecuta los notebooks (outputs versionados)
-uv run pytest                # tests
-```
+## Juego responsable
 
-## Estado
-
-Proyecto en construcción, por fases: datos -> baselines -> modelos y validación -> pipeline ->
-registro en vivo -> app -> CI. Hechas: datos, baselines y modelos con validación.
+Ningún sistema, modelo o "número caliente" cambia la probabilidad de ganar: cada combinación tiene
+1 en 15.401.568 de llevarse el premio mayor, y el valor esperado de un tiquete es negativo. Si el
+juego deja de ser entretenimiento, busca ayuda.
