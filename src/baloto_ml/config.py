@@ -82,6 +82,36 @@ class Paths:
         """Sorteos nuevos detectados por `ingest`, pendientes de `validate`."""
         return self.interim / "new_draws.csv"
 
+    def features_file(self, juego: Juego) -> Path:
+        """Salida de `build_features` (derivada, no versionada)."""
+        return self.processed / "features" / f"{juego}.npz"
+
+    @property
+    def models(self) -> Path:
+        return self.root / "models"
+
+    def staging_dir(self, juego: Juego) -> Path:
+        """Salida de `train`, pendiente de `register` (no versionada)."""
+        return self.models / "_staging" / juego
+
+    @property
+    def predictions(self) -> Path:
+        return self.root / "predictions"
+
+    @property
+    def predictions_log(self) -> Path:
+        """Registro append-only de predicciones hechas ANTES de cada sorteo."""
+        return self.predictions / "predictions_log.csv"
+
+    @property
+    def reconciliation_log(self) -> Path:
+        """Registro append-only de cada predicción comparada con el resultado real."""
+        return self.predictions / "reconciliation_log.csv"
+
+    @property
+    def live_summary(self) -> Path:
+        return self.reports / "live_summary.json"
+
     @property
     def reports(self) -> Path:
         return self.root / "reports"

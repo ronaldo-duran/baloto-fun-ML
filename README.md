@@ -187,6 +187,37 @@ del azar, y en la segunda mitad cae a 0,547.
 
 ![La fuga fabrica señal](reports/figures/trampa_fuga.png)
 
+## Pipeline de reentrenamiento
+
+Cada etapa es una función con entradas y salidas en disco, invocable sola (`uv run baloto-ml
+<etapa>` o `make <objetivo>`). `pipeline` las encadena y aplica la regla central: **solo se
+reentrena si hay sorteos nuevos y validados**. Si no los hay, termina sin tocar ningún archivo.
+
+```mermaid
+flowchart LR
+    I[ingest] --> V[validate] --> Q{¿sorteos nuevos?}
+    Q -- no --> F[fin: no hace nada]
+    Q -- sí --> B[build_features] --> T[train] --> E[evaluate] --> R[register]
+```
+
+| Etapa | Lee | Escribe |
+|---|---|---|
+| `ingest` | `data/raw/`, `data/incoming/*.csv` (y opcionalmente baloto.com) | `data/interim/new_draws.csv` |
+| `validate` | lo anterior + `data/processed/draws.csv` | `data/processed/draws.csv`, `reports/validation.json` |
+| `build-features` | `data/processed/draws.csv` | `data/processed/features/<juego>.npz` |
+| `train` | draws + features (verifica que coincidan) | `models/_staging/<juego>/` |
+| `evaluate` | draws | `reports/analysis.json`, `reports/evaluation/<juego>.json` |
+| `register` | staging + evaluación | `models/<juego>/<fecha>_<hash>/`, `models/<juego>/latest` |
+
+**Registro de modelos.** Cada versión guarda `model.joblib` (los dos clasificadores; el de
+producción es la logística) y `metadata.json`, con las fechas y el número de sorteos del
+entrenamiento, los hiperparámetros, la semilla, las métricas walk-forward, la versión y el hash
+del código, el commit y las versiones de las librerías. El identificador `<fecha del último
+sorteo>_<hash>` depende solo de las entradas (datos, código y configuración): entrenar otra vez
+con lo mismo produce el mismo id. `latest` es un archivo de texto, porque los symlinks no son
+portables en Windows. Se conservan las 10 versiones más recientes en el árbol de trabajo, y git
+guarda el resto.
+
 ## Lecciones sobre validación y baselines
 
 1. **Revisa los supuestos de la prueba de libro.** El χ² clásico supone balotas independientes,
@@ -224,6 +255,7 @@ uv sync                      # entorno y dependencias
 uv run baloto-ml scrape      # (opcional) trae de baloto.com los sorteos que falten
 uv run baloto-ml ingest      # detecta sorteos nuevos en data/raw y data/incoming
 uv run baloto-ml validate    # valida y actualiza data/processed/draws.csv
+uv run baloto-ml pipeline    # todas las etapas; sin sorteos nuevos no hace nada
 uv run baloto-ml evaluate    # uniformidad, independencia, walk-forward y Monte Carlo (~1 min)
 uv run baloto-ml significance            # permutación e historiales sintéticos (lento: ~1 h)
 uv run baloto-ml significance --quick    # la misma etapa con pocas simulaciones (prueba)
