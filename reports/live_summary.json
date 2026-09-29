@@ -1,0 +1,66 @@
+{
+  "juegos": {
+    "baloto": {
+      "predicciones": 1,
+      "conciliadas": 0,
+      "aciertos": 0,
+      "aciertos_esperados_azar": 0.0,
+      "banda95_aciertos": [
+        0.0,
+        0.0
+      ],
+      "z_aciertos": null,
+      "aciertos_superbalota": 0,
+      "aciertos_superbalota_esperados": 0.0,
+      "banda95_superbalota": [
+        0.0,
+        0.0
+      ],
+      "log_loss_medio": null,
+      "log_loss_constante": 0.359445,
+      "pendientes": [
+        {
+          "n_sorteo": 2716,
+          "fecha_sorteo": "2026-09-30",
+          "combinacion": "26-36-37-41-43",
+          "superbalota_sugerida": 11,
+          "modelo_version": "2026-09-28_3d5a6b8d"
+        }
+      ]
+    },
+    "revancha": {
+      "predicciones": 1,
+      "conciliadas": 0,
+      "aciertos": 0,
+      "aciertos_esperados_azar": 0.0,
+      "banda95_aciertos": [
+        0.0,
+        0.0
+      ],
+      "z_aciertos": null,
+      "aciertos_superbalota": 0,
+      "aciertos_superbalota_esperados": 0.0,
+      "banda95_superbalota": [
+        0.0,
+        0.0
+      ],
+      "log_loss_medio": null,
+      "log_loss_constante": 0.359445,
+      "pendientes": [
+        {
+          "n_sorteo": 2716,
+          "fecha_sorteo": "2026-09-30",
+          "combinacion": "04-08-21-26-43",
+          "superbalota_sugerida": 14,
+          "modelo_version": "2026-09-28_989e2cd7"
+        }
+      ]
+    }
+  },
+  "referencias": {
+    "aciertos_por_sorteo": 0.581395,
+    "p_superbalota": 0.0625,
+    "p_balota": 0.116279,
+    "n_superbalota": 16
+  }
+}
