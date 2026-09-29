@@ -5,7 +5,7 @@ UV ?= uv
 RUN = $(UV) run baloto-ml
 
 .DEFAULT_GOAL := help
-.PHONY: help install scrape ingest validate features train evaluate register pipeline significance notebooks test lint
+.PHONY: help install scrape ingest validate features train evaluate register predict reconcile pipeline significance notebooks test lint check-log
 
 install: ## instala el entorno (uv)
 	$(UV) sync
@@ -31,6 +31,12 @@ evaluate: ## 5. walk-forward, Monte Carlo y chequeos de datos
 register: ## 6. registra el modelo entrenado
 	$(RUN) register
 
+predict: ## 7. registra la predicción del próximo sorteo
+	$(RUN) predict-next
+
+reconcile: ## 8. concilia predicciones con resultados
+	$(RUN) log
+
 pipeline: ## todas las etapas (no hace nada si no hay sorteos nuevos)
 	$(RUN) pipeline
 
@@ -42,6 +48,9 @@ notebooks: ## re-ejecuta los notebooks
 
 test: ## tests
 	$(UV) run pytest
+
+check-log: ## verifica que los registros en vivo solo crecieron (append-only)
+	$(UV) run python scripts/check_append_only.py
 
 lint: ## ruff (lint + formato)
 	$(UV) run ruff check src tests scripts

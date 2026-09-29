@@ -197,7 +197,7 @@ reentrena si hay sorteos nuevos y validados**. Si no los hay, termina sin tocar 
 flowchart LR
     I[ingest] --> V[validate] --> Q{¿sorteos nuevos?}
     Q -- no --> F[fin: no hace nada]
-    Q -- sí --> B[build_features] --> T[train] --> E[evaluate] --> R[register]
+    Q -- sí --> B[build_features] --> T[train] --> E[evaluate] --> R[register] --> P[predict_next] --> L[log]
 ```
 
 | Etapa | Lee | Escribe |
@@ -208,6 +208,8 @@ flowchart LR
 | `train` | draws + features (verifica que coincidan) | `models/_staging/<juego>/` |
 | `evaluate` | draws | `reports/analysis.json`, `reports/evaluation/<juego>.json` |
 | `register` | staging + evaluación | `models/<juego>/<fecha>_<hash>/`, `models/<juego>/latest` |
+| `predict-next` | modelo vigente + draws | una fila más en `predictions/predictions_log.csv` |
+| `log` (`reconcile`) | registros + draws | filas nuevas en `predictions/reconciliation_log.csv`, `reports/live_summary.json` |
 
 **Registro de modelos.** Cada versión guarda `model.joblib` (los dos clasificadores; el de
 producción es la logística) y `metadata.json`, con las fechas y el número de sorteos del
@@ -217,6 +219,27 @@ sorteo>_<hash>` depende solo de las entradas (datos, código y configuración): 
 con lo mismo produce el mismo id. `latest` es un archivo de texto, porque los symlinks no son
 portables en Windows. Se conservan las 10 versiones más recientes en el árbol de trabajo, y git
 guarda el resto.
+
+## Registro de predicciones en vivo
+
+Es la parte que da credibilidad al experimento: cualquiera puede "predecir" el pasado. Aquí cada
+predicción queda escrita, con fecha y hora, **antes** del sorteo, y nunca se modifica.
+
+- **`predict_next`** agrega a `predictions/predictions_log.csv` una fila por juego con el sorteo
+  objetivo (número y fecha según el calendario), la versión del modelo, las 43 + 16
+  probabilidades y la combinación sugerida (las 5 balotas y la superbalota más probables).
+- **Reglas.** Hay una sola predicción por sorteo, y vale la primera. Solo se registra hasta las
+  8:00 p. m. (hora de Colombia) del día del sorteo, y solo con un modelo entrenado con los datos
+  actuales. Si los datos están desactualizados, el "próximo" sorteo ya ocurrió y no se registra
+  nada: sería predecir el pasado.
+- **`log`** (o `reconcile`), cuando llega el resultado, agrega a
+  `predictions/reconciliation_log.csv` los aciertos de la combinación sugerida, el acierto de la
+  superbalota y la log-loss frente al azar. `reports/live_summary.json` acumula los aciertos del
+  modelo frente a los esperados (0,581 por sorteo) con su banda del 95 %.
+- **Append-only verificable.** Los dos archivos solo crecen: el código nunca reescribe filas y
+  `scripts/check_append_only.py` (`make check-log`) comprueba contra git que el contenido
+  anterior sea un prefijo exacto del nuevo. El CI lo corre antes de cada commit, y el historial de
+  git más los logs de GitHub Actions sirven de sello de tiempo externo.
 
 ## Lecciones sobre validación y baselines
 

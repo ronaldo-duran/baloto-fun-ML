@@ -76,6 +76,17 @@ def cmd_register(args: argparse.Namespace, paths: Paths) -> int:
     return 0
 
 
+def cmd_predict_next(args: argparse.Namespace, paths: Paths) -> int:
+    for juego in _juegos(args, paths):
+        stages.predict_next(paths, juego)
+    return 0
+
+
+def cmd_log(args: argparse.Namespace, paths: Paths) -> int:
+    stages.log(paths)
+    return 0
+
+
 def cmd_pipeline(args: argparse.Namespace, paths: Paths) -> int:
     overrides: dict = {}
     if args.web:
@@ -131,6 +142,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = with_juego(sub.add_parser("register", help="6. registra el modelo entrenado"))
     p.set_defaults(func=cmd_register)
+
+    p = with_juego(
+        sub.add_parser("predict-next", help="7. registra la predicción del próximo sorteo")
+    )
+    p.set_defaults(func=cmd_predict_next)
+
+    p = sub.add_parser("log", aliases=["reconcile"], help="8. concilia predicciones y resultados")
+    p.set_defaults(func=cmd_log)
 
     p = sub.add_parser(
         "pipeline", help="todas las etapas; solo reentrena si hay sorteos nuevos validados"

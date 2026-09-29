@@ -12,6 +12,7 @@ import platform
 import shutil
 import subprocess
 from dataclasses import dataclass, replace
+from datetime import datetime
 from pathlib import Path
 
 import joblib
@@ -33,6 +34,8 @@ from baloto_ml.features.build import (
     FeatureSet,
     NumberFeatures,
 )
+from baloto_ml.live.predict import predict_next as live_predict_next
+from baloto_ml.live.reconcile import reconcile, write_live_summary
 from baloto_ml.models.base import GameData
 from baloto_ml.models.catalog import CLASSIFIERS, PRODUCTION_MODEL
 from baloto_ml.models.classifiers import HGB_PARAMS, LOGISTIC_PARAMS
@@ -265,3 +268,18 @@ def register(paths: Paths, juego: Juego, cfg: PipelineConfig) -> str:
     registry.prune(juego, cfg.keep_versions)
     shutil.rmtree(staging)
     return version
+
+
+# ------------------------------------------------------------------------ 7-8. predict_next y log
+
+
+def predict_next(paths: Paths, juego: Juego, now: datetime | None = None) -> dict | None:
+    """Registra (append-only) la predicción del próximo sorteo, si aún no ha pasado."""
+    return live_predict_next(paths, juego, now)
+
+
+def log(paths: Paths, now: datetime | None = None) -> list[dict]:
+    """Concilia las predicciones con los resultados nuevos y actualiza el resumen en vivo."""
+    rows = reconcile(paths, now)
+    write_live_summary(paths)
+    return rows
