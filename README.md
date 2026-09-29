@@ -241,6 +241,31 @@ predicción queda escrita, con fecha y hora, **antes** del sorteo, y nunca se mo
   anterior sea un prefijo exacto del nuevo. El CI lo corre antes de cada commit, y el historial de
   git más los logs de GitHub Actions sirven de sello de tiempo externo.
 
+## App: el experimento, en modo juego
+
+`make app` (o `uv run streamlit run app/streamlit_app.py`) abre una app con el aviso de juego
+responsable visible en todas las páginas:
+
+1. **Prueba tu jugada.** Escoges 5 balotas y la superbalota, en Baloto o Revancha. La app muestra
+   el puntaje que les da el modelo de producción para el próximo sorteo, junto con la distribución
+   de puntajes de 10.000 jugadas al azar y tu percentil. Recuerda que las combinaciones que de
+   verdad ganaron caen, en promedio, en el percentil 49 de ese puntaje. Además, un backtest cuenta
+   cuántos aciertos habría tenido tu jugada en cada sorteo desde 2021, frente a lo esperado por azar.
+2. **Registro en vivo.** Muestra las predicciones pendientes y los aciertos acumulados del modelo
+   frente al azar, con su banda del 95 %.
+3. **Método y resultados.** Validación, significancia, control positivo, la trampa y las
+   lecciones, con las cifras de `reports/`.
+
+El modelo se carga con `st.cache_resource`, y la app lee datos, modelos y reportes directamente
+del repositorio.
+
+**Despliegue en Streamlit Community Cloud:** *New app*, elegir el repositorio, rama `main` y
+archivo principal `app/streamlit_app.py`; en *Advanced settings*, Python 3.12. Las dependencias
+salen de `app/requirements.txt`, que Streamlit busca primero en la carpeta del archivo principal.
+Está exportado de `uv.lock` con versiones exactas, para que el `model.joblib` cargue con la misma
+versión de scikit-learn con la que se entrenó; se regenera con `make requirements`. No requiere
+secretos. Cada push del pipeline redespliega la app con el modelo y el registro al día.
+
 ## Lecciones sobre validación y baselines
 
 1. **Revisa los supuestos de la prueba de libro.** El χ² clásico supone balotas independientes,

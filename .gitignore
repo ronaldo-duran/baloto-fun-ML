@@ -19,3 +19,6 @@ models/_staging/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Herramientas locales
+.claude/

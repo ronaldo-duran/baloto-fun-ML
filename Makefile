@@ -5,7 +5,7 @@ UV ?= uv
 RUN = $(UV) run baloto-ml
 
 .DEFAULT_GOAL := help
-.PHONY: help install scrape ingest validate features train evaluate register predict reconcile pipeline significance notebooks test lint check-log
+.PHONY: help install scrape ingest validate features train evaluate register predict reconcile pipeline significance notebooks app requirements test lint check-log
 
 install: ## instala el entorno (uv)
 	$(UV) sync
@@ -42,6 +42,12 @@ pipeline: ## todas las etapas (no hace nada si no hay sorteos nuevos)
 
 significance: ## permutación e historiales sintéticos (lento, ~1 h)
 	$(RUN) significance
+
+app: ## abre la app de Streamlit en local
+	$(UV) run streamlit run app/streamlit_app.py
+
+requirements: ## regenera app/requirements.txt (Streamlit Cloud) desde uv.lock
+	$(UV) export --no-default-groups --group app --no-emit-project --no-hashes --format requirements-txt --quiet -o app/requirements.txt
 
 notebooks: ## re-ejecuta los notebooks
 	$(UV) run python scripts/run_notebooks.py
