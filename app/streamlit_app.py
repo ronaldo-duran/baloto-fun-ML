@@ -26,5 +26,7 @@ navigation.run()
 st.divider()
 st.caption(
     "Proyecto personal y educativo, sin relación con el operador del Baloto. Si el juego deja de "
-    "ser entretenimiento, busca ayuda. [Código en GitHub](" + common.REPO_URL + ")"
+    "ser entretenimiento, busca ayuda. [Código en GitHub](" + common.REPO_URL + "). "
+    "Datos históricos: [Resultados Baloto](" + common.KAGGLE_DATASET_URL + ") de Javier Forero "
+    "(Kaggle, licencia MIT)."
 )

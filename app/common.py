@@ -30,6 +30,8 @@ DISCLAIMER = (
     "Juega con responsabilidad."
 )
 REPO_URL = "https://github.com/ronaldo-duran/baloto-fun-ML"
+KAGGLE_DATASET_URL = "https://www.kaggle.com/datasets/jforero/resultados-baloto"
+KAGGLE_NOTEBOOK_URL = "https://www.kaggle.com/code/jforero/baloto-web-scraping"
 NOMBRE = {"baloto": "Baloto", "revancha": "Baloto Revancha"}
 NOMBRE_MODELO = {"logistica": "regresión logística", "gradient_boosting": "gradient boosting"}
 

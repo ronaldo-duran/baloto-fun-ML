@@ -63,7 +63,11 @@ if all(ev.values()):
         "constante (negativo = peor). p: probabilidad de un resultado "
         "igual o mejor por puro azar (Monte Carlo, 10 000 simulaciones)."
     )
-st.image(str(c.PATHS.figures / "modelos_walk_forward.png"), width="stretch")
+st.image(
+    str(c.PATHS.figures / "modelos_walk_forward.png"),
+    caption="Aciertos y log-loss de cada modelo frente al azar, con intervalos del 95 %.",
+    width="stretch",
+)
 
 st.header("Cómo se evaluó", divider="gray")
 st.markdown(
@@ -119,7 +123,11 @@ if analysis:
         hide_index=True,
         column_config={"p-valor": st.column_config.NumberColumn(format="%.3f")},
     )
-    st.image(str(c.PATHS.figures / "frecuencia_balotas.png"), width="stretch")
+    st.image(
+        str(c.PATHS.figures / "frecuencia_balotas.png"),
+        caption="Veces que salió cada balota, con la banda del 95 % esperable por azar.",
+        width="stretch",
+    )
 
 if controles:
     st.header("¿El método vería una señal si la hubiera? Sí", divider="gray")
@@ -139,7 +147,11 @@ if controles:
         "sorteo anterior pesa más). El gradient boosting la detecta; con los datos reales, "
         "no ve nada."
     )
-    st.image(str(c.PATHS.figures / "control_positivo.png"), width="stretch")
+    st.image(
+        str(c.PATHS.figures / "control_positivo.png"),
+        caption="Skill y aciertos de cada modelo según la fuerza de la señal plantada.",
+        width="stretch",
+    )
 
 st.header('La trampa: cómo "predecir" la lotería sin darse cuenta', divider="gray")
 st.markdown(
@@ -148,7 +160,14 @@ st.markdown(
     "la feature ya contiene la respuesta. Por eso las features se prueban con tests y el modelo se "
     "juzga con un registro en vivo."
 )
-st.image(str(c.PATHS.figures / "trampa_fuga.png"), width="stretch")
+st.image(
+    str(c.PATHS.figures / "trampa_fuga.png"),
+    caption=(
+        'Con features que incluyen el sorteo a predecir, cualquier validación "acierta"; '
+        "sin la fuga, ninguna."
+    ),
+    width="stretch",
+)
 
 st.header("Lecciones", divider="gray")
 st.markdown(
@@ -167,4 +186,16 @@ st.markdown(
 st.markdown(
     f"Código, datos, notebooks y la historia completa del registro en vivo: "
     f"[{c.REPO_URL.removeprefix('https://')}]({c.REPO_URL})."
+)
+
+st.header("Créditos y fuentes", divider="gray")
+st.markdown(
+    f"""
+- **Datos históricos (2021-2026):** dataset
+  [Resultados Baloto]({c.KAGGLE_DATASET_URL}) de **Javier Forero** en Kaggle, licencia MIT
+  (aviso en [`data/raw/LICENSE`]({c.REPO_URL}/blob/main/data/raw/LICENSE)).
+- **Descarga desde baloto.com:** inspirada en el notebook
+  [Baloto Web Scraping]({c.KAGGLE_NOTEBOOK_URL}) del mismo autor; la implementación es propia.
+- **Resultados oficiales:** [baloto.com](https://www.baloto.com/resultados).
+"""
 )

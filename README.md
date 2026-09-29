@@ -8,7 +8,8 @@ sorteo es aleatorio. El valor del proyecto está en la ingeniería (validación 
 reentrenamiento automatizado y un registro de predicciones en vivo que nadie puede maquillar),
 no en "ganarle" a la lotería.
 
-**El resultado, en corto** (634 sorteos por juego, 384 de prueba en walk-forward):
+**El resultado, en corto** (cifras al 2026-09-26: 634 sorteos por juego, 384 de prueba en
+walk-forward; el pipeline actualiza `reports/` y la app con cada sorteo nuevo):
 
 - Ni las balotas ni la superbalota se desvían del azar, y Baloto y Revancha son independientes.
 - Ningún modelo supera al azar: 0,53-0,57 aciertos por sorteo, frente a 0,581 esperados.
@@ -67,9 +68,12 @@ regresión sobre su valor.
 
 | Fuente | Qué trae | Formato |
 |---|---|---|
-| `data/raw/resultados_{baloto,revancha}.csv` | Histórico 2021-05-01 -> 2026-05-23 (sorteos 2081-2660) | Original: `Date, C1..C5, SB, #Sorteo` |
+| `data/raw/resultados_{baloto,revancha}.csv` | Histórico 2021-05-01 -> 2026-05-23 (sorteos 2081-2660), del dataset [Resultados Baloto](https://www.kaggle.com/datasets/jforero/resultados-baloto) de Javier Forero (licencia MIT) | Original: `Date, C1..C5, SB, #Sorteo` |
 | `data/incoming/*.csv` | Sorteos nuevos, manuales o descargados; entre ellos, los 2661-2714 traídos de baloto.com | Esquema común, con columna `juego` |
 | baloto.com (`WebSource`) | Página pública por sorteo | Se guarda en `data/incoming/web_*.csv` |
+
+El histórico empieza en mayo de 2021 porque, según el autor del dataset, ese mes cambió la
+metodología del bombo del Baloto.
 
 **Esquema común** (`data/processed/draws.csv`): `fecha, n_sorteo, juego, b1..b5, superbalota`, con
 `juego` en {`baloto`, `revancha`} y las balotas ordenadas de menor a mayor. Al 2026-09-26 tiene
@@ -386,6 +390,20 @@ tests/                pytest: datos, fuga, codificación, modelos, pipeline, reg
 - El registro en vivo solo avanza si llegan los resultados a tiempo: con datos atrasados, el
   pipeline no registra predicciones (a propósito).
 - Proyecto personal y educativo, sin relación con el operador del Baloto.
+
+## Créditos y fuentes
+
+- **Datos históricos (2021-05-01 a 2026-05-23):** dataset
+  [Resultados Baloto](https://www.kaggle.com/datasets/jforero/resultados-baloto) de
+  **Javier Forero** en Kaggle, licencia MIT. El aviso de licencia está en
+  [`data/raw/LICENSE`](data/raw/LICENSE).
+- **Descarga desde baloto.com:** `WebSource` se inspiró en el notebook
+  [Baloto Web Scraping](https://www.kaggle.com/code/jforero/baloto-web-scraping), del mismo autor
+  (Apache 2.0), que mostró la estructura de URLs y de las páginas de resultados. La
+  implementación de este repositorio es propia (robots.txt, sin seguir redirecciones, validación
+  antes de escribir).
+- **Resultados oficiales:** [baloto.com](https://www.baloto.com/resultados). Los sorteos desde el
+  2661 se leen directamente de ahí.
 
 ## Juego responsable
 
