@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -23,7 +24,7 @@ from baloto_ml.live.log import PREDICTION_COLUMNS, RECONCILIATION_COLUMNS, read_
 from baloto_ml.live.predict import NextDraw, next_draw_forecast  # noqa: E402
 from baloto_ml.models.registry import ModelRegistry  # noqa: E402
 
-PATHS = Paths(ROOT)
+PATHS = Paths(Path(os.environ.get("BALOTO_ML_ROOT") or ROOT))  # la variable permite probarla
 DISCLAIMER = (
     "**Experimento educativo.** El Baloto es aleatorio; este modelo no predice resultados. "
     "Juega con responsabilidad."
