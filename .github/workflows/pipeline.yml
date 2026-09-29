@@ -46,9 +46,9 @@ jobs:
       INGEST_WEB: ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.web) || vars.INGEST_WEB || 'true' }}
       FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force && '--force' || '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
