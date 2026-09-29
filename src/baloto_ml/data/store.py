@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from baloto_ml.data.schema import empty_draws, read_canonical_csv, to_csv_frame
@@ -52,8 +54,32 @@ def known_last(df: pd.DataFrame) -> dict[str, int]:
     return {str(j): int(g["n_sorteo"].max()) for j, g in df.groupby("juego")}
 
 
+def to_jsonable(obj: Any, sig_digits: int = 6) -> Any:
+    """Convierte tipos de numpy y redondea floats a cifras significativas.
+
+    El redondeo evita que diferencias de 1e-16 entre sistemas operativos cambien los reportes
+    versionados cuando los datos no cambiaron (el pipeline debe ser idempotente).
+    """
+    if isinstance(obj, dict):
+        return {str(k): to_jsonable(v, sig_digits) for k, v in obj.items()}
+    if isinstance(obj, list | tuple):
+        return [to_jsonable(v, sig_digits) for v in obj]
+    if isinstance(obj, np.ndarray):
+        return to_jsonable(obj.tolist(), sig_digits)
+    if isinstance(obj, bool | np.bool_):
+        return bool(obj)
+    if isinstance(obj, int | np.integer):
+        return int(obj)
+    if isinstance(obj, float | np.floating):
+        x = float(obj)
+        if not math.isfinite(x):
+            return None
+        return 0.0 if abs(x) < 1e-12 else float(f"{x:.{sig_digits}g}")
+    return obj
+
+
 def write_json(obj: Any, path: Path) -> None:
-    write_text(path, json.dumps(obj, ensure_ascii=False, indent=2) + "\n")
+    write_text(path, json.dumps(to_jsonable(obj), ensure_ascii=False, indent=2) + "\n")
 
 
 def read_json(path: Path) -> Any:

@@ -7,10 +7,11 @@ import logging
 from collections.abc import Sequence
 from pathlib import Path
 
-from baloto_ml.config import Paths, default_paths
+from baloto_ml.config import N_SIMS, Paths, default_paths
 from baloto_ml.data.ingest import run_ingest, run_validate, scrape_to_incoming
 from baloto_ml.data.sources import WebSource, WebSourceError
 from baloto_ml.data.validation import DataValidationError
+from baloto_ml.evaluation.runner import run_evaluate
 from baloto_ml.logging_utils import setup_logging
 
 logger = logging.getLogger("baloto_ml.cli")
@@ -37,6 +38,11 @@ def cmd_validate(args: argparse.Namespace, paths: Paths) -> int:
     return 0
 
 
+def cmd_evaluate(args: argparse.Namespace, paths: Paths) -> int:
+    run_evaluate(paths, n_sims=args.n_sims)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="baloto-ml", description=DISCLAIMER)
     parser.add_argument(
@@ -58,6 +64,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("validate", help="valida y actualiza data/processed/draws.csv")
     p.set_defaults(func=cmd_validate)
+
+    p = sub.add_parser(
+        "evaluate", help="uniformidad, independencia entre juegos y walk-forward por juego"
+    )
+    p.add_argument("--n-sims", type=int, default=N_SIMS, help="simulaciones Monte Carlo")
+    p.set_defaults(func=cmd_evaluate)
     return parser
 
 

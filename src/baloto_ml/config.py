@@ -21,6 +21,23 @@ EXPECTED_HITS = BALLS_PER_DRAW * P_BALL  # aciertos esperados por azar con 5 nú
 JACKPOT_ODDS = comb(N_BALLS, BALLS_PER_DRAW) * N_SUPER  # 1 en 15.401.568
 
 SEED = 42
+N_SIMS = 10_000  # simulaciones Monte Carlo por defecto
+
+
+@dataclass(frozen=True)
+class EvalConfig:
+    """Ventanas del walk-forward (expanding window), fijadas antes de ver resultados."""
+
+    warmup: int = 100  # primeros sorteos: solo historia (llenan la ventana de 100 de las features)
+    min_train: int = 150  # sorteos objetivo del primer entrenamiento
+    refit_every: int = 10  # se reentrena cada k sorteos; las features se actualizan en cada uno
+
+    @property
+    def first_test_index(self) -> int:
+        return self.warmup + self.min_train
+
+
+EVAL = EvalConfig()
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -72,6 +89,18 @@ class Paths:
     @property
     def validation_report(self) -> Path:
         return self.reports / "validation.json"
+
+    @property
+    def analysis_report(self) -> Path:
+        """Uniformidad por juego e independencia Baloto/Revancha."""
+        return self.reports / "analysis.json"
+
+    def evaluation_report(self, juego: Juego) -> Path:
+        return self.reports / "evaluation" / f"{juego}.json"
+
+    @property
+    def figures(self) -> Path:
+        return self.reports / "figures"
 
     def raw_file(self, juego: Juego) -> Path:
         return self.raw / RAW_FILENAMES[juego]
