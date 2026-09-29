@@ -1,0 +1,196 @@
+{
+  "plantilla_fechas": "baloto",
+  "control_positivo": [
+    {
+      "modelo": "frecuencia",
+      "efecto": 0.0,
+      "n_semillas": 2,
+      "aciertos_top5": 0.56901,
+      "skill_log_loss_balotas": -0.00292081
+    },
+    {
+      "modelo": "frecuencia",
+      "efecto": 0.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.574219,
+      "skill_log_loss_balotas": -0.00350825
+    },
+    {
+      "modelo": "frecuencia",
+      "efecto": 1.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.591146,
+      "skill_log_loss_balotas": -0.00399093
+    },
+    {
+      "modelo": "logistica",
+      "efecto": 0.0,
+      "n_semillas": 2,
+      "aciertos_top5": 0.589844,
+      "skill_log_loss_balotas": -0.0495457
+    },
+    {
+      "modelo": "logistica",
+      "efecto": 0.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.570312,
+      "skill_log_loss_balotas": -0.0474266
+    },
+    {
+      "modelo": "logistica",
+      "efecto": 1.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.648438,
+      "skill_log_loss_balotas": -0.0458792
+    },
+    {
+      "modelo": "gradient_boosting",
+      "efecto": 0.0,
+      "n_semillas": 2,
+      "aciertos_top5": 0.558594,
+      "skill_log_loss_balotas": -0.00389571
+    },
+    {
+      "modelo": "gradient_boosting",
+      "efecto": 0.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.764323,
+      "skill_log_loss_balotas": -0.000619113
+    },
+    {
+      "modelo": "gradient_boosting",
+      "efecto": 1.5,
+      "n_semillas": 2,
+      "aciertos_top5": 1.20573,
+      "skill_log_loss_balotas": 0.0198969
+    }
+  ],
+  "regularizacion_logistica": [
+    {
+      "C": 1.0,
+      "efecto": 0.0,
+      "n_semillas": 2,
+      "aciertos_top5": 0.589844,
+      "skill_log_loss_balotas": -0.0495457
+    },
+    {
+      "C": 1.0,
+      "efecto": 0.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.570312,
+      "skill_log_loss_balotas": -0.0474266
+    },
+    {
+      "C": 1.0,
+      "efecto": 1.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.648438,
+      "skill_log_loss_balotas": -0.0458792
+    },
+    {
+      "C": 0.3,
+      "efecto": 0.0,
+      "n_semillas": 2,
+      "aciertos_top5": 0.580729,
+      "skill_log_loss_balotas": -0.035771
+    },
+    {
+      "C": 0.3,
+      "efecto": 0.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.567708,
+      "skill_log_loss_balotas": -0.0346183
+    },
+    {
+      "C": 0.3,
+      "efecto": 1.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.643229,
+      "skill_log_loss_balotas": -0.0324309
+    },
+    {
+      "C": 0.1,
+      "efecto": 0.0,
+      "n_semillas": 2,
+      "aciertos_top5": 0.559896,
+      "skill_log_loss_balotas": -0.0226189
+    },
+    {
+      "C": 0.1,
+      "efecto": 0.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.558594,
+      "skill_log_loss_balotas": -0.0225345
+    },
+    {
+      "C": 0.1,
+      "efecto": 1.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.671875,
+      "skill_log_loss_balotas": -0.0196426
+    },
+    {
+      "C": 0.03,
+      "efecto": 0.0,
+      "n_semillas": 2,
+      "aciertos_top5": 0.582031,
+      "skill_log_loss_balotas": -0.0117465
+    },
+    {
+      "C": 0.03,
+      "efecto": 0.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.579427,
+      "skill_log_loss_balotas": -0.012611
+    },
+    {
+      "C": 0.03,
+      "efecto": 1.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.678385,
+      "skill_log_loss_balotas": -0.00996191
+    },
+    {
+      "C": 0.01,
+      "efecto": 0.0,
+      "n_semillas": 2,
+      "aciertos_top5": 0.561198,
+      "skill_log_loss_balotas": -0.00655765
+    },
+    {
+      "C": 0.01,
+      "efecto": 0.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.59375,
+      "skill_log_loss_balotas": -0.00793762
+    },
+    {
+      "C": 0.01,
+      "efecto": 1.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.641927,
+      "skill_log_loss_balotas": -0.00647055
+    },
+    {
+      "C": 0.003,
+      "efecto": 0.0,
+      "n_semillas": 2,
+      "aciertos_top5": 0.5625,
+      "skill_log_loss_balotas": -0.0046748
+    },
+    {
+      "C": 0.003,
+      "efecto": 0.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.589844,
+      "skill_log_loss_balotas": -0.00622012
+    },
+    {
+      "C": 0.003,
+      "efecto": 1.5,
+      "n_semillas": 2,
+      "aciertos_top5": 0.595052,
+      "skill_log_loss_balotas": -0.00614397
+    }
+  ]
+}

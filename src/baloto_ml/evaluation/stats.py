@@ -30,10 +30,15 @@ class TestResult:
 # ------------------------------------------------------------------------------ utilidades
 
 
+def seed_sequence(*keys: str | int, seed: int = SEED) -> np.random.SeedSequence:
+    """Semilla derivada de claves estables (crc32, no `hash()`, que cambia entre ejecuciones)."""
+    ints = [k if isinstance(k, int) else zlib.crc32(str(k).encode("utf-8")) for k in keys]
+    return np.random.SeedSequence([seed, *ints])
+
+
 def rng_for(*keys: str | int, seed: int = SEED) -> np.random.Generator:
     """Generador reproducible e independiente por análisis (no depende del orden de ejecución)."""
-    ints = [k if isinstance(k, int) else zlib.crc32(str(k).encode("utf-8")) for k in keys]
-    return np.random.default_rng(np.random.SeedSequence([seed, *ints]))
+    return np.random.default_rng(seed_sequence(*keys, seed=seed))
 
 
 def hits_pmf(

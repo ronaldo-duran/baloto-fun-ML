@@ -4,15 +4,19 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import date
+from functools import cached_property
 
 import numpy as np
 import pandas as pd
 
 from baloto_ml.config import N_BALLS, N_SUPER
+from baloto_ml.data.calendar import DEFAULT_SCHEDULE
 from baloto_ml.data.encoding import encode_draws
+from baloto_ml.features.build import FeatureSet, build_features
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class GameData:
     """Historial codificado de UN juego, ordenado por número de sorteo."""
 
@@ -42,6 +46,17 @@ class GameData:
     @property
     def weekday(self) -> np.ndarray:
         return pd.DatetimeIndex(self.fechas).dayofweek.to_numpy()
+
+    @property
+    def next_date(self) -> date:
+        """Fecha del sorteo siguiente al último conocido, según el calendario."""
+        return DEFAULT_SCHEDULE.next_draw_date(pd.Timestamp(self.fechas[-1]).date())
+
+    @cached_property
+    def features(self) -> FeatureSet:
+        """Features de los sorteos 0..n-1 y del siguiente (fila n); se calculan una vez."""
+        weekdays = np.append(self.weekday, self.next_date.weekday())
+        return build_features(self.y_balls, self.y_sb, weekdays)
 
 
 @dataclass(frozen=True)

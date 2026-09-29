@@ -11,7 +11,8 @@ from baloto_ml.config import N_SIMS, Paths, default_paths
 from baloto_ml.data.ingest import run_ingest, run_validate, scrape_to_incoming
 from baloto_ml.data.sources import WebSource, WebSourceError
 from baloto_ml.data.validation import DataValidationError
-from baloto_ml.evaluation.runner import run_evaluate
+from baloto_ml.evaluation.runner import run_evaluate, run_significance
+from baloto_ml.evaluation.significance import DEFAULT_RUNS
 from baloto_ml.logging_utils import setup_logging
 
 logger = logging.getLogger("baloto_ml.cli")
@@ -43,6 +44,12 @@ def cmd_evaluate(args: argparse.Namespace, paths: Paths) -> int:
     return 0
 
 
+def cmd_significance(args: argparse.Namespace, paths: Paths) -> int:
+    runs = {m: (10, 20) if args.quick else DEFAULT_RUNS[m] for m in args.models}
+    run_significance(paths, runs=runs, n_jobs=args.jobs, controls=not args.no_controls)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="baloto-ml", description=DISCLAIMER)
     parser.add_argument(
@@ -70,6 +77,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--n-sims", type=int, default=N_SIMS, help="simulaciones Monte Carlo")
     p.set_defaults(func=cmd_evaluate)
+
+    p = sub.add_parser(
+        "significance",
+        help="permutación e historiales sintéticos con reentrenamiento (lento, no corre en CI)",
+    )
+    p.add_argument("--models", nargs="+", default=list(DEFAULT_RUNS), choices=list(DEFAULT_RUNS))
+    p.add_argument("--jobs", type=int, default=-1, help="procesos en paralelo (-1: todos)")
+    p.add_argument("--quick", action="store_true", help="pocas simulaciones (prueba rápida)")
+    p.add_argument("--no-controls", action="store_true", help="omite los controles del método")
+    p.set_defaults(func=cmd_significance)
     return parser
 
 

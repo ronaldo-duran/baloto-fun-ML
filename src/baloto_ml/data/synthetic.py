@@ -29,6 +29,29 @@ def draw_dates(n: int, start: date, schedule: DrawSchedule = DEFAULT_SCHEDULE) -
     return out
 
 
+def sticky_draws(n: int, rng: np.random.Generator, effect: float) -> tuple[np.ndarray, np.ndarray]:
+    """Lotería con señal PLANTADA: lo que salió en el sorteo anterior pesa (1 + effect).
+
+    Muestreo sin reemplazo proporcional a los pesos (truco Gumbel-top-k). Sirve de control
+    positivo: si el pipeline no detectara esta señal, su resultado negativo no valdría nada.
+    """
+    balls = np.empty((n, BALLS_PER_DRAW), dtype=np.int64)
+    sb = np.empty(n, dtype=np.int64)
+    prev_b = np.zeros(N_BALLS)
+    prev_s = np.zeros(N_SUPER)
+    for t in range(n):
+        keys = np.log1p(effect * prev_b) + rng.gumbel(size=N_BALLS)
+        picked = np.argpartition(-keys, BALLS_PER_DRAW)[:BALLS_PER_DRAW]
+        balls[t] = np.sort(picked + 1)
+        s = int(np.argmax(np.log1p(effect * prev_s) + rng.gumbel(size=N_SUPER)))
+        sb[t] = s + 1
+        prev_b = np.zeros(N_BALLS)
+        prev_b[picked] = 1
+        prev_s = np.zeros(N_SUPER)
+        prev_s[s] = 1
+    return balls, sb
+
+
 def synthetic_history(
     n_draws: int,
     rng: np.random.Generator,

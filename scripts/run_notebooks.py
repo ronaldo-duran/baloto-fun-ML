@@ -28,7 +28,9 @@ def run(path: Path) -> None:
         record_timing=False,  # sin marcas de tiempo: re-ejecutar no ensucia el diff
     )
     client.execute()
-    nbformat.write(nb, path)
+    text = nbformat.writes(nb).rstrip("\n") + "\n"
+    # LF explícito: en Windows nbformat.write usaría CRLF.
+    path.write_text(text, encoding="utf-8", newline="")
 
 
 def main(argv: list[str]) -> int:

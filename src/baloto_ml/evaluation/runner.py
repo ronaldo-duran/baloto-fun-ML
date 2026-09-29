@@ -10,6 +10,7 @@ import pandas as pd
 
 from baloto_ml.config import EVAL, EXPECTED_HITS, JUEGOS, N_SIMS, SEED, EvalConfig, Paths
 from baloto_ml.data.store import read_draws, write_json
+from baloto_ml.evaluation.controls import positive_control, regularization_sensitivity
 from baloto_ml.evaluation.metrics import (
     ACCURACY_SB_CHANCE,
     BRIER_BALL_CONST,
@@ -17,6 +18,13 @@ from baloto_ml.evaluation.metrics import (
     LOG_LOSS_BALL_CONST,
     LOG_LOSS_SB_CONST,
     evaluate_probabilities,
+)
+from baloto_ml.evaluation.significance import (
+    DEFAULT_RUNS,
+    outcome_significance,
+    significance_for_game,
+    winner_percentile_summary,
+    winner_percentiles,
 )
 from baloto_ml.evaluation.stats import (
     hits_variance,
@@ -27,14 +35,10 @@ from baloto_ml.evaluation.stats import (
 )
 from baloto_ml.evaluation.walk_forward import walk_forward
 from baloto_ml.models.base import Forecaster, GameData
-from baloto_ml.models.baselines import ConstantBaseline, FrequencyBaseline
+from baloto_ml.models.catalog import MODELS, PRODUCTION_MODEL
+from baloto_ml.models.classifiers import HGB_PARAMS, LOGISTIC_PARAMS
 
 logger = logging.getLogger(__name__)
-
-BASELINES: dict[str, Callable[[], Forecaster]] = {
-    "constante": ConstantBaseline,
-    "frecuencia": FrequencyBaseline,
-}
 
 
 def analyze_data(draws: pd.DataFrame, n_sims: int = N_SIMS) -> dict:
@@ -70,9 +74,11 @@ def analyze_data(draws: pd.DataFrame, n_sims: int = N_SIMS) -> dict:
 def evaluate_game(
     data: GameData,
     cfg: EvalConfig = EVAL,
-    models: Mapping[str, Callable[[], Forecaster]] = BASELINES,
+    models: Mapping[str, Callable[[], Forecaster]] = MODELS,
+    n_sims: int = N_SIMS,
 ) -> dict:
-    """Walk-forward de cada modelo sobre la misma ventana de prueba del juego."""
+    """Walk-forward de cada modelo sobre la misma ventana de prueba, más su significancia
+    Monte Carlo (predicciones fijas, 10 000 secuencias de sorteos justos)."""
     start = cfg.first_test_index
     n_test = len(data) - start
     sd_hits = float(np.sqrt(hits_variance() / n_test))
@@ -100,16 +106,28 @@ def evaluate_game(
             "log_loss_superbalota": LOG_LOSS_SB_CONST,
             "brier_superbalota": BRIER_SB_CONST,
         },
+        "modelo_produccion": PRODUCTION_MODEL,
+        "hiperparametros": {
+            "frecuencia": {"pseudo_sorteos": 10},
+            "logistica": LOGISTIC_PARAMS,
+            "gradient_boosting": HGB_PARAMS,
+        },
         "modelos": {},
     }
     for name, factory in models.items():
         wf = walk_forward(factory, data, cfg)
+        y_balls, y_sb = data.y_balls[wf.test_idx], data.y_sb[wf.test_idx]
         metrics = evaluate_probabilities(
-            wf.probs,
-            data.y_balls[wf.test_idx],
-            data.y_sb[wf.test_idx],
-            rng_for("desempate", data.juego, name),
+            wf.probs, y_balls, y_sb, rng_for("desempate", data.juego, name)
         )
+        metrics["significancia_monte_carlo"] = outcome_significance(
+            wf.probs, metrics, n_sims, rng_for("mc-resultados", data.juego, name)
+        )
+        if name == PRODUCTION_MODEL:
+            pct = winner_percentiles(
+                wf.probs, y_balls, y_sb, rng_for("percentil-ganadoras", data.juego)
+            )
+            metrics["percentil_ganadoras"] = winner_percentile_summary(pct)
         out["modelos"][name] = metrics
         logger.info(
             "%s/%s: aciertos top-5 %.3f (azar %.3f) | skill log-loss %+.4f | acc SB %.3f",
@@ -132,4 +150,30 @@ def run_evaluate(paths: Paths, n_sims: int = N_SIMS, cfg: EvalConfig = EVAL) -> 
     for juego in JUEGOS:
         if (draws["juego"] == juego).any():
             data = GameData.from_draws(draws, juego)
-            write_json(evaluate_game(data, cfg), paths.evaluation_report(juego))
+            write_json(evaluate_game(data, cfg, n_sims=n_sims), paths.evaluation_report(juego))
+
+
+def run_significance(
+    paths: Paths,
+    runs: Mapping[str, tuple[int, int]] = DEFAULT_RUNS,
+    cfg: EvalConfig = EVAL,
+    n_jobs: int = -1,
+    controls: bool = True,
+) -> None:
+    """Etapa lenta (minutos, no corre en CI): permutación e historiales sintéticos con
+    reentrenamiento por juego, más los controles del método sobre simulaciones."""
+    draws = read_draws(paths.processed_draws)
+    if draws.empty:
+        raise ValueError("No hay dataset procesado: corre antes `ingest` y `validate`")
+    datas = {j: GameData.from_draws(draws, j) for j in JUEGOS if (draws["juego"] == j).any()}
+    for juego, data in datas.items():
+        write_json(significance_for_game(data, runs, cfg, n_jobs), paths.significance_report(juego))
+    if controls:
+        template = next(iter(datas.values()))
+        report = {
+            "plantilla_fechas": template.juego,
+            "control_positivo": positive_control(template, cfg=cfg, n_jobs=n_jobs),
+            "regularizacion_logistica": regularization_sensitivity(template, cfg, n_jobs),
+        }
+        write_json(report, paths.controls_report)
+        logger.info("Controles del método escritos en %s", paths.controls_report)

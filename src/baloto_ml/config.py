@@ -98,6 +98,15 @@ class Paths:
     def evaluation_report(self, juego: Juego) -> Path:
         return self.reports / "evaluation" / f"{juego}.json"
 
+    def significance_report(self, juego: Juego) -> Path:
+        """Permutación e historiales sintéticos con reentrenamiento (etapa lenta)."""
+        return self.reports / "significance" / f"{juego}.json"
+
+    @property
+    def controls_report(self) -> Path:
+        """Control positivo y sensibilidad a la regularización (solo simulaciones)."""
+        return self.reports / "significance" / "controles.json"
+
     @property
     def figures(self) -> Path:
         return self.reports / "figures"

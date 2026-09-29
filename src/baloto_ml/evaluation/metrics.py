@@ -45,6 +45,26 @@ def hits_at_k(
     return np.take_along_axis(y, top_k(p, k, rng), axis=1).sum(axis=1)
 
 
+def reliability_curve(
+    p: np.ndarray, y: np.ndarray, n_bins: int = 10
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Calibración por cuantiles de probabilidad predicha: (media predicha, frecuencia
+    observada, semiancho del IC95 % binomial) por grupo."""
+    p, y = np.ravel(p), np.ravel(y)
+    edges = np.quantile(p, np.linspace(0, 1, n_bins + 1))
+    bins = np.clip(np.searchsorted(edges, p, side="right") - 1, 0, n_bins - 1)
+    pred, obs, half = [], [], []
+    for b in range(n_bins):
+        mask = bins == b
+        if mask.sum() == 0:
+            continue
+        f = y[mask].mean()
+        pred.append(p[mask].mean())
+        obs.append(f)
+        half.append(1.96 * np.sqrt(max(f * (1 - f), 1e-12) / mask.sum()))
+    return np.array(pred), np.array(obs), np.array(half)
+
+
 def skill(value: float, reference: float) -> float:
     """1 - valor/referencia: positivo es mejor que la referencia, negativo es peor."""
     return 1.0 - value / reference

@@ -7,9 +7,11 @@ authors = [{ name = "Ronaldo Duran" }]
 requires-python = ">=3.11"
 dependencies = [
     "beautifulsoup4>=4.12",
+    "joblib>=1.4",
     "numpy>=2.0",
     "pandas>=2.2",
     "requests>=2.32",
+    "scikit-learn>=1.5",
     "scipy>=1.13",
 ]
 

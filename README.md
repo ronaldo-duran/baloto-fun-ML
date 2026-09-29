@@ -100,6 +100,93 @@ Por azar se esperan 0,581 aciertos por sorteo (banda del 95 % para 384 sorteos: 
 log-loss de 0,3594 por balota y un accuracy de 1/16 = 0,0625 en la superbalota. El "top-5" del
 baseline constante es una jugada al azar, con empates rotos con semilla.
 
+## Modelos: ¿encuentran algo? No
+
+Detalle en [`notebooks/03_resultados_modelos.ipynb`](notebooks/03_resultados_modelos.ipynb).
+
+**Features** (solo sorteos anteriores al objetivo): para cada número, su frecuencia en los últimos
+10, 30 y 100 sorteos, los sorteos desde su última aparición y una tendencia (frecuencia de los
+últimos 15 menos la de los 15 anteriores); además, el día de la semana. Un test verifica que las
+features de cada sorteo se pueden calcular sin conocer ese sorteo ni ninguno posterior.
+
+**Modelos**, con hiperparámetros fijados antes de ver resultados:
+- **Logística multietiqueta**: una regresión logística por balota (43) y por superbalota (16),
+  L2 con C = 1. Es el modelo de producción, elegido a priori.
+- **Gradient boosting compartido**: un `HistGradientBoostingClassifier` para las 43 balotas en
+  formato largo (una fila por sorteo y número), sin la identidad del número y sin early stopping,
+  porque su validación interna es un split aleatorio.
+
+| Juego | Modelo | Aciertos top-5 (IC95 %) | Skill log-loss vs. constante | p Monte Carlo (aciertos · log-loss) |
+|---|---|---|---|---|
+| Baloto | logística | 0,534 [0,465; 0,603] | −4,79 % | 0,92 · 0,79 |
+| Baloto | gradient boosting | 0,560 [0,490; 0,629] | −0,39 % | 0,74 · 0,53 |
+| Revancha | logística | 0,568 [0,502; 0,633] | −5,10 % | 0,66 · 0,82 |
+| Revancha | gradient boosting | 0,534 [0,470; 0,598] | −0,48 % | 0,92 · 0,93 |
+
+Ningún modelo supera al azar en aciertos, y todos quedan por debajo del baseline constante en
+log-loss (IC95 % del Δ enteramente desfavorable). Las pruebas de significancia coinciden:
+
+- **Monte Carlo sobre los resultados** (10.000 secuencias de sorteos justos con las predicciones
+  fijas): en aciertos y log-loss de las balotas, todos los p-valores de "mejor que el azar" están
+  por encima de 0,5; en la superbalota el menor es 0,12 (accuracy de la logística en Baloto).
+- **Combinaciones ganadoras según el modelo**: la combinación que de verdad ganó cae, en promedio,
+  en el percentil 49 (Baloto) y 50 (Revancha) entre 2000 jugadas al azar puntuadas por la
+  logística antes del sorteo. KS contra uniforme: p = 0,62 y 0,87.
+- **Permutación y historiales sintéticos con reentrenamiento** (etapa `significance`): el
+  skill de log-loss observado queda en percentiles 6-76 de sus distribuciones nulas; ningún p baja
+  de 0,23. Se usaron 200 permutaciones por modelo y juego, 1000 historiales sintéticos para la
+  logística y 200 para el boosting.
+
+![Aciertos y log-loss de cada modelo frente al azar](reports/figures/modelos_walk_forward.png)
+
+### Control positivo: ¿el método vería una señal si existiera?
+
+Un resultado negativo solo vale si el método detecta una señal real. En historiales sintéticos
+con una señal plantada, en que lo que salió en el sorteo anterior pesa 1,5 o 2,5 veces más:
+
+| Modelo | Sin señal | Efecto 0,5 | Efecto 1,5 |
+|---|---|---|---|
+| gradient boosting: aciertos · skill | 0,559 · −0,39 % | 0,764 · −0,06 % | **1,206 · +1,99 %** |
+| logística: aciertos · skill | 0,590 · −4,95 % | 0,570 · −4,74 % | 0,648 · −4,59 % |
+
+El gradient boosting detecta la señal: su resultado negativo con datos reales es informativo. La
+logística por balota reacciona en aciertos, pero **nunca** supera al baseline en log-loss. Con ~50
+apariciones por balota para aprender 8 coeficientes, la varianza tapa cualquier señal. Ningún C la
+salva (ver el notebook): regularizar más la acerca al constante y la vuelve ciega. C se quedó en su
+valor a priori, porque elegirlo mirando resultados sería otra forma de buscar hasta encontrar.
+
+![Control positivo](reports/figures/control_positivo.png)
+
+**Una corrección, contada con honestidad.** La primera versión de la logística estandarizaba todo,
+incluida la variable "lunes", que casi siempre vale 0 al comienzo: con 2 o 3 lunes en el
+entrenamiento, un lunes quedaba a ~10 desviaciones estándar y dejaba sin efecto la regularización.
+La sequía (sorteos desde la última aparición) tiene cola larga y la logística extrapolaba. Resultado:
+probabilidades de hasta 0,99 para una balota y un skill de −7,5 % (Baloto) y −8,4 % (Revancha). Se
+corrigió con indicadores sin escalar y `log1p` en la sequía, sin tocar ningún hiperparámetro. La
+versión inicial se conserva (`PerNumberLogistic(legacy_preprocessing=True)`) para reproducir el
+hallazgo.
+
+### La trampa: cómo "predecir" la lotería sin darse cuenta
+
+[`notebooks/02_trampa_split_aleatorio.ipynb`](notebooks/02_trampa_split_aleatorio.ipynb) muestra,
+marcado como **lo que no se debe hacer**, cómo una sola línea sin `.shift(1)` fabrica un modelo
+"ganador":
+
+| Features | Validación | Aciertos top-5 (Baloto) |
+|---|---|---|
+| con fuga (la ventana incluye el sorteo) | split aleatorio | **1,366** |
+| con fuga | walk-forward | **1,508** |
+| correctas (solo pasado) | split aleatorio | 0,582 |
+| correctas | walk-forward | 0,576 |
+
+En una lotería el culpable principal es la fuga en las features; el split aleatorio igual queda
+prohibido porque no imita el uso real, mezcla épocas y, en series con estructura temporal, sí
+filtra información. La segunda trampa es probar 80 estrategias de números "calientes" y "fríos" y
+quedarse con la mejor: en la primera mitad del periodo logra 0,688 aciertos, por encima de la banda
+del azar, y en la segunda mitad cae a 0,547.
+
+![La fuga fabrica señal](reports/figures/trampa_fuga.png)
+
 ## Lecciones sobre validación y baselines
 
 1. **Revisa los supuestos de la prueba de libro.** El χ² clásico supone balotas independientes,
@@ -111,6 +198,22 @@ baseline constante es una jugada al azar, con empates rotos con semilla.
 3. **Con 43 números siempre hay una balota "caliente".** El 9 salió 92 veces en Baloto
    (z = 2,26), pero en historiales simulados la mayor desviación es igual o mayor el 68 % de las
    veces. Mirar muchas cosas a la vez exige corregir por comparaciones múltiples.
+4. **Una línea sin `.shift(1)` fabrica un modelo "ganador".** Con la fuga, 1,37 aciertos por
+   sorteo frente a 0,58 del azar; sin ella, nada. El walk-forward no protege de una feature con
+   fuga: la protegen los tests y el registro en vivo, porque una feature que usa el resultado no se
+   puede calcular antes del sorteo.
+5. **Probar muchas cosas y quedarse con la mejor garantiza encontrar "algo".** La mejor de 80
+   estrategias parece ganadora en un periodo y vuelve al azar en el siguiente. Las decisiones se
+   fijan antes de mirar y se miden en datos que no participaron en ninguna elección.
+6. **Un resultado negativo necesita un control positivo.** Si el método no detecta una señal
+   plantada, su "no hay señal" no prueba nada. Aquí el gradient boosting la detecta y la logística
+   por balota no, y así se reporta.
+7. **Más parámetros, más varianza.** Sobre un proceso aleatorio, cada parámetro extra solo añade
+   ruido: la logística con 43 modelos pierde un 5 % de log-loss frente al constante, y solo estimar
+   43 interceptos por separado ya cuesta ~0,5 %.
+8. **Mira las probabilidades, no solo la métrica.** Una probabilidad de 0,99 para una balota no es
+   una predicción audaz: es un defecto (aquí, de escalado). Las probabilidades imposibles son la
+   prueba de cordura más barata.
 
 ## Cómo ejecutarlo
 
@@ -121,7 +224,9 @@ uv sync                      # entorno y dependencias
 uv run baloto-ml scrape      # (opcional) trae de baloto.com los sorteos que falten
 uv run baloto-ml ingest      # detecta sorteos nuevos en data/raw y data/incoming
 uv run baloto-ml validate    # valida y actualiza data/processed/draws.csv
-uv run baloto-ml evaluate    # uniformidad, independencia y walk-forward -> reports/
+uv run baloto-ml evaluate    # uniformidad, independencia, walk-forward y Monte Carlo (~1 min)
+uv run baloto-ml significance            # permutación e historiales sintéticos (lento: ~1 h)
+uv run baloto-ml significance --quick    # la misma etapa con pocas simulaciones (prueba)
 uv run python scripts/run_notebooks.py   # re-ejecuta los notebooks (outputs versionados)
 uv run pytest                # tests
 ```
@@ -129,4 +234,4 @@ uv run pytest                # tests
 ## Estado
 
 Proyecto en construcción, por fases: datos -> baselines -> modelos y validación -> pipeline ->
-registro en vivo -> app -> CI. Hechas: datos, y baselines con chequeos estadísticos.
+registro en vivo -> app -> CI. Hechas: datos, baselines y modelos con validación.
