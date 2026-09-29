@@ -1,0 +1,1 @@
+prediccion_id,conciliada_utc,juego,n_sorteo,fecha_sorteo,fecha_real,modelo_version,combinacion,resultado,superbalota_sugerida,superbalota_real,aciertos,acierto_superbalota,aciertos_esperados,log_loss_balotas,log_loss_constante,log_loss_superbalota,log_loss_superbalota_constante
