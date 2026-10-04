@@ -1,58 +1,58 @@
 {
   "juegos": {
     "baloto": {
-      "predicciones": 2,
-      "conciliadas": 1,
+      "predicciones": 3,
+      "conciliadas": 2,
       "aciertos": 0,
-      "aciertos_esperados_azar": 0.581395,
+      "aciertos_esperados_azar": 1.16279,
       "banda95_aciertos": [
-        -0.754943,
-        1.91773
+        -0.727078,
+        3.05266
       ],
-      "z_aciertos": -0.852729,
-      "aciertos_superbalota": 0,
-      "aciertos_superbalota_esperados": 0.0625,
+      "z_aciertos": -1.20594,
+      "aciertos_superbalota": 1,
+      "aciertos_superbalota_esperados": 0.125,
       "banda95_superbalota": [
-        -0.41194,
-        0.53694
+        -0.54596,
+        0.79596
       ],
-      "log_loss_medio": 0.3604,
+      "log_loss_medio": 0.363082,
       "log_loss_constante": 0.359445,
       "pendientes": [
         {
-          "n_sorteo": 2717,
-          "fecha_sorteo": "2026-10-03",
-          "combinacion": "19-32-37-41-43",
+          "n_sorteo": 2718,
+          "fecha_sorteo": "2026-10-05",
+          "combinacion": "11-20-36-41-42",
           "superbalota_sugerida": 10,
-          "modelo_version": "2026-09-30_777de6d7"
+          "modelo_version": "2026-10-03_121c8141"
         }
       ]
     },
     "revancha": {
-      "predicciones": 2,
-      "conciliadas": 1,
+      "predicciones": 3,
+      "conciliadas": 2,
       "aciertos": 1,
-      "aciertos_esperados_azar": 0.581395,
+      "aciertos_esperados_azar": 1.16279,
       "banda95_aciertos": [
-        -0.754943,
-        1.91773
+        -0.727078,
+        3.05266
       ],
-      "z_aciertos": 0.613965,
+      "z_aciertos": -0.168832,
       "aciertos_superbalota": 0,
-      "aciertos_superbalota_esperados": 0.0625,
+      "aciertos_superbalota_esperados": 0.125,
       "banda95_superbalota": [
-        -0.41194,
-        0.53694
+        -0.54596,
+        0.79596
       ],
-      "log_loss_medio": 0.348256,
+      "log_loss_medio": 0.375159,
       "log_loss_constante": 0.359445,
       "pendientes": [
         {
-          "n_sorteo": 2717,
-          "fecha_sorteo": "2026-10-03",
-          "combinacion": "04-08-14-26-34",
-          "superbalota_sugerida": 15,
-          "modelo_version": "2026-09-30_77dec672"
+          "n_sorteo": 2718,
+          "fecha_sorteo": "2026-10-05",
+          "combinacion": "08-12-18-21-36",
+          "superbalota_sugerida": 3,
+          "modelo_version": "2026-10-03_61d111e1"
         }
       ]
     }
