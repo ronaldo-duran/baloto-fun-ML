@@ -1,0 +1,109 @@
+{
+  "version": "2026-10-10_8920e7c9",
+  "juego": "revancha",
+  "modelo_produccion": "logistica",
+  "modelos": [
+    "logistica",
+    "gradient_boosting"
+  ],
+  "datos": {
+    "hash": "953ad7b5e09181f3ed52d06ee7181c4bc7ff9499393675dcbf983d4099ac1e64",
+    "n_sorteos": 640,
+    "primer_sorteo": 2081,
+    "ultimo_sorteo": 2720,
+    "fecha_inicio": "2021-05-01",
+    "fecha_fin": "2026-10-10"
+  },
+  "entrenamiento": {
+    "sorteos_objetivo": [
+      2181,
+      2720
+    ],
+    "n_objetivo": 540,
+    "warmup": 100,
+    "semilla": 42,
+    "hiperparametros": {
+      "logistica": {
+        "C": 1.0,
+        "solver": "lbfgs",
+        "max_iter": 1000
+      },
+      "gradient_boosting": {
+        "max_iter": 100,
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "min_samples_leaf": 40,
+        "l2_regularization": 1.0,
+        "early_stopping": false
+      }
+    }
+  },
+  "features": {
+    "por_numero": [
+      "freq_10",
+      "freq_30",
+      "freq_100",
+      "sorteos_desde_ultima",
+      "tendencia_15v15"
+    ],
+    "compartidas": [
+      "dia_lunes",
+      "dia_miercoles",
+      "dia_sabado"
+    ],
+    "hash": "63f1be47b2cec9b5972c0f5d49409c39fe6316f85aac68b4436391c0541ff5b0"
+  },
+  "codigo": {
+    "version_paquete": "0.1.0",
+    "hash": "065b358de27d7f3205ea96f7637fa887573340d52da0fae6c0a232e68a33aef2",
+    "git_commit": "becd3e2"
+  },
+  "entorno": {
+    "python": "3.12.15",
+    "numpy": "2.5.3",
+    "pandas": "3.0.6",
+    "scikit_learn": "1.9.1"
+  },
+  "metricas_walk_forward": {
+    "ventana": {
+      "warmup": 100,
+      "min_train": 150,
+      "refit_every": 10,
+      "n_sorteos_prueba": 390,
+      "primer_sorteo_prueba": 2331,
+      "ultimo_sorteo_prueba": 2720,
+      "fecha_inicio_prueba": "2023-09-23",
+      "fecha_fin_prueba": "2026-10-10"
+    },
+    "modelos": {
+      "constante": {
+        "aciertos_top5": 0.6,
+        "skill_log_loss_balotas": 0.0,
+        "accuracy_superbalota": 0.0717949,
+        "p_aciertos_monte_carlo": 0.305469,
+        "p_log_loss_monte_carlo": 1.0
+      },
+      "frecuencia": {
+        "aciertos_top5": 0.546154,
+        "skill_log_loss_balotas": -0.00321917,
+        "accuracy_superbalota": 0.0538462,
+        "p_aciertos_monte_carlo": 0.850515,
+        "p_log_loss_monte_carlo": 0.706429
+      },
+      "logistica": {
+        "aciertos_top5": 0.564103,
+        "skill_log_loss_balotas": -0.0511092,
+        "accuracy_superbalota": 0.0538462,
+        "p_aciertos_monte_carlo": 0.69913,
+        "p_log_loss_monte_carlo": 0.848115
+      },
+      "gradient_boosting": {
+        "aciertos_top5": 0.538462,
+        "skill_log_loss_balotas": -0.0047344,
+        "accuracy_superbalota": 0.0717949,
+        "p_aciertos_monte_carlo": 0.89851,
+        "p_log_loss_monte_carlo": 0.919308
+      }
+    }
+  }
+}
