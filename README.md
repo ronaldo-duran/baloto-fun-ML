@@ -240,7 +240,7 @@ reentrena si hay sorteos nuevos y validados**. Si no los hay, termina sin tocar 
 flowchart LR
     I[ingest] --> V[validate] --> Q{¿sorteos nuevos?}
     Q -- no --> F[fin: no hace nada]
-    Q -- sí --> B[build_features] --> T[train] --> E[evaluate] --> R[register] --> P[predict_next] --> L[log]
+    Q -- sí --> B[build_features] --> T[train] --> E[evaluate] --> R[register] --> P[predict_next] --> L[log] --> S[replay]
 ```
 
 | Etapa | Lee | Escribe |
@@ -253,6 +253,7 @@ flowchart LR
 | `register` | staging + evaluación | `models/<juego>/<fecha>_<hash>/`, `models/<juego>/latest` |
 | `predict-next` | modelo vigente + draws | una fila más en `predictions/predictions_log.csv` |
 | `log` (`reconcile`) | registros + draws | filas nuevas en `predictions/reconciliation_log.csv`, `reports/live_summary.json` |
+| `replay` | draws + la simulación ya hecha | filas nuevas en `reports/simulacion_ganadoras.csv` |
 
 **Registro de modelos.** Cada versión guarda `model.joblib` (los dos clasificadores; el de
 producción es la logística) y `metadata.json`, con las fechas y el número de sorteos del
@@ -290,6 +291,25 @@ predicción queda escrita, con fecha y hora, **antes** del sorteo, y nunca se mo
   se agregaron el puntaje y el percentil del resultado en octubre de 2026, calculados para las
   filas anteriores con las probabilidades que ya estaban registradas. El CI lo corre antes de cada
   commit, y el historial de git más los logs de GitHub Actions sirven de sello de tiempo externo.
+- **`replay`: el registro, repetido sobre el último año.** Con pocos sorteos en vivo es fácil ver
+  patrones que no existen (por ejemplo, "las ganadoras siempre caen en la mitad"). Esta etapa
+  repite el mismo cálculo para cada sorteo desde el 11/10/2025: reentrena la logística solo con
+  los sorteos anteriores, como hace el pipeline antes de cada predicción real, y guarda en
+  `reports/simulacion_ganadoras.csv` el resultado, el puntaje y el percentil de la ganadora. En los
+  sorteos que también están en el registro en vivo da los mismos percentiles. Es incremental:
+  cada corrida del pipeline solo agrega los sorteos nuevos (la primera tardó unos 2 minutos).
+
+  | 11/10/2025 – 10/10/2026 | Baloto | Revancha | Por azar |
+  |---|---|---|---|
+  | Sorteos | 157 | 157 | |
+  | Percentil medio | 51 | 50 | 50 |
+  | Entre 25 y 75 | 42 % | 53 % | 50 % |
+  | Por encima de 90 | 13 % | 10 % | 10 % |
+  | p binomial (mitad) · p KS (uniforme) | 0,055 · 0,67 | 0,52 · 0,93 | |
+
+  Las ganadoras no caen más en la mitad que en otro lado: en Baloto incluso cayeron un poco
+  menos de lo esperado, sin que la diferencia sea significativa. Es lo que se espera de un modelo
+  que no sabe nada.
 
 ## Automatización con GitHub Actions
 
@@ -324,7 +344,9 @@ responsable visible en todas las páginas:
    cuántos aciertos habría tenido tu jugada en cada sorteo desde 2021, frente a lo esperado por azar.
 2. **Registro en vivo.** Muestra las predicciones pendientes y los aciertos acumulados del modelo
    frente al azar, con su banda del 95 %, y en cada sorteo el puntaje y el percentil que el modelo
-   le daba, antes del sorteo, a la combinación que ganó.
+   le daba, antes del sorteo, a la combinación que ganó. Debajo, la simulación del último año:
+   el percentil de cada ganadora en el tiempo, su reparto por deciles frente al azar y la tabla
+   completa.
 3. **Método y resultados.** Validación, significancia, control positivo, la trampa y las
    lecciones, con las cifras de `reports/`.
 

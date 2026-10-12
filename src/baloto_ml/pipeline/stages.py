@@ -1,6 +1,7 @@
 """Etapas del pipeline. Cada una lee de disco, escribe en disco y se puede correr sola.
 
 ingest -> validate -> build_features -> train -> evaluate -> register -> predict_next -> log
+-> replay
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ import platform
 import shutil
 import subprocess
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import joblib
@@ -21,7 +22,7 @@ import pandas as pd
 import sklearn
 
 from baloto_ml import __version__
-from baloto_ml.config import EVAL, N_SIMS, SEED, EvalConfig, Juego, Paths
+from baloto_ml.config import EVAL, N_SIMS, REPLAY_START, SEED, EvalConfig, Juego, Paths
 from baloto_ml.data.ingest import run_ingest, run_validate, scrape_to_incoming
 from baloto_ml.data.schema import empty_draws
 from baloto_ml.data.sources import WebSourceError
@@ -36,6 +37,7 @@ from baloto_ml.features.build import (
 )
 from baloto_ml.live.predict import predict_next as live_predict_next
 from baloto_ml.live.reconcile import reconcile, write_live_summary
+from baloto_ml.live.replay import run_replay
 from baloto_ml.models.base import GameData
 from baloto_ml.models.catalog import CLASSIFIERS, PRODUCTION_MODEL
 from baloto_ml.models.classifiers import HGB_PARAMS, LOGISTIC_PARAMS
@@ -64,6 +66,7 @@ class PipelineConfig:
     ingest_enabled: bool = True  # INGEST_ENABLED=false: el pipeline no busca sorteos nuevos
     ingest_web: bool = False  # INGEST_WEB=true intenta traer sorteos de baloto.com antes
     keep_versions: int = 10  # versiones de modelo que se conservan en el árbol de trabajo
+    replay_start: date = REPLAY_START  # primer sorteo de la simulación del registro en vivo
 
     @classmethod
     def from_env(cls, **overrides) -> PipelineConfig:
@@ -283,3 +286,12 @@ def log(paths: Paths, now: datetime | None = None) -> list[dict]:
     rows = reconcile(paths, now)
     write_live_summary(paths)
     return rows
+
+
+# ------------------------------------------------------------------------------------ 9. replay
+
+
+def replay(paths: Paths, cfg: PipelineConfig) -> int:
+    """Puntaje y percentil de cada ganadora desde `replay_start`, reentrenando sorteo a sorteo
+    (incremental: solo calcula los sorteos que falten en reports/simulacion_ganadoras.csv)."""
+    return run_replay(paths, cfg.replay_start, cfg.eval)

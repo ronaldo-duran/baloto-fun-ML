@@ -5,7 +5,7 @@ UV ?= uv
 RUN = $(UV) run baloto-ml
 
 .DEFAULT_GOAL := help
-.PHONY: help install scrape ingest validate features train evaluate register predict reconcile pipeline significance notebooks app requirements test lint check-log
+.PHONY: help install scrape ingest validate features train evaluate register predict reconcile replay pipeline significance notebooks app requirements test lint check-log
 
 install: ## instala el entorno (uv)
 	$(UV) sync
@@ -36,6 +36,9 @@ predict: ## 7. registra la predicción del próximo sorteo
 
 reconcile: ## 8. concilia predicciones con resultados
 	$(RUN) log
+
+replay: ## 9. simula el registro en vivo sobre el último año (incremental)
+	$(RUN) replay
 
 pipeline: ## todas las etapas (no hace nada si no hay sorteos nuevos)
 	$(RUN) pipeline

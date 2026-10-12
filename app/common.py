@@ -22,6 +22,7 @@ from baloto_ml.data.store import read_draws, read_json  # noqa: E402
 from baloto_ml.evaluation.significance import combination_scores  # noqa: E402
 from baloto_ml.live.log import PREDICTION_COLUMNS, RECONCILIATION_COLUMNS, read_log  # noqa: E402
 from baloto_ml.live.predict import NextDraw, next_draw_forecast  # noqa: E402
+from baloto_ml.live.replay import REPLAY_COLUMNS  # noqa: E402
 from baloto_ml.models.registry import ModelRegistry  # noqa: E402
 
 PATHS = Paths(Path(os.environ.get("BALOTO_ML_ROOT") or ROOT))  # la variable permite probarla
@@ -69,6 +70,12 @@ def load_logs() -> tuple[pd.DataFrame, pd.DataFrame]:
         read_log(PATHS.predictions_log, PREDICTION_COLUMNS),
         read_log(PATHS.reconciliation_log, RECONCILIATION_COLUMNS),
     )
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def load_replay() -> pd.DataFrame:
+    """Simulación del registro en vivo sobre los sorteos del último año."""
+    return read_log(PATHS.replay_report, REPLAY_COLUMNS)
 
 
 def latest_version(juego: str) -> str | None:
@@ -163,6 +170,46 @@ def observed_vs_expected(df: pd.DataFrame, x: str, x_title: str, y_title: str):
         y="esperado:Q", tooltip=tooltip
     )
     return (bars + ticks).properties(height=260)
+
+
+def percentile_timeline(df: pd.DataFrame):
+    """Percentil de cada combinación ganadora en el tiempo, con la mitad (25-75) sombreada.
+
+    df: una fila de reports/simulacion_ganadoras.csv por sorteo, más `origen`.
+    """
+    band = (
+        alt.Chart(pd.DataFrame({"lo": [25], "hi": [75]}))
+        .mark_rect(color=GRAY, opacity=0.18)
+        .encode(y="lo:Q", y2="hi:Q")
+    )
+    df = df.assign(jugada=df["resultado"] + " + " + df["superbalota"].astype(str))
+    points = (
+        alt.Chart(df)
+        .mark_circle(size=64, opacity=0.85)
+        .encode(
+            x=alt.X("fecha:T", title=None, axis=alt.Axis(format="%m/%Y", tickCount=8)),
+            y=alt.Y(
+                "percentil_resultado:Q",
+                title="Percentil de la ganadora",
+                scale=alt.Scale(domain=[0, 100]),
+                axis=alt.Axis(values=[0, 25, 50, 75, 100]),
+            ),
+            color=alt.Color(
+                "origen:N",
+                scale=alt.Scale(domain=["simulación", "registro en vivo"], range=[BLUE, ORANGE]),
+                legend=alt.Legend(title=None, orient="top"),
+            ),
+            tooltip=[
+                alt.Tooltip("n_sorteo:Q", title="sorteo"),
+                alt.Tooltip("fecha:T", title="fecha", format="%d/%m/%Y"),
+                alt.Tooltip("jugada:N", title="resultado"),
+                alt.Tooltip("puntaje_resultado:Q", title="puntaje", format="+.3f"),
+                alt.Tooltip("percentil_resultado:Q", title="percentil", format=".1f"),
+                alt.Tooltip("origen:N", title="origen"),
+            ],
+        )
+    )
+    return (band + points).properties(height=280)
 
 
 def cumulative_vs_chance(df: pd.DataFrame, x_title: str):

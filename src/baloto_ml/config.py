@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from datetime import date
 from math import comb
 from pathlib import Path
 from typing import Literal
@@ -22,6 +23,10 @@ JACKPOT_ODDS = comb(N_BALLS, BALLS_PER_DRAW) * N_SUPER  # 1 en 15.401.568
 
 SEED = 42
 N_SIMS = 10_000  # simulaciones Monte Carlo por defecto
+
+# Desde cuándo se repite el registro en vivo sobre sorteos pasados (etapa `replay`): un año antes
+# del día en que se pidió el análisis (2026-10-11). Fijo, para que la simulación solo crezca.
+REPLAY_START = date(2025, 10, 11)
 
 
 @dataclass(frozen=True)
@@ -111,6 +116,11 @@ class Paths:
     @property
     def live_summary(self) -> Path:
         return self.reports / "live_summary.json"
+
+    @property
+    def replay_report(self) -> Path:
+        """Simulación del registro en vivo sobre sorteos pasados (etapa `replay`)."""
+        return self.reports / "simulacion_ganadoras.csv"
 
     @property
     def reports(self) -> Path:

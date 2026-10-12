@@ -2,8 +2,9 @@
 
 Regla: se reentrena SOLO si hay sorteos nuevos y validados (o si un juego aún no tiene modelo).
 Si no hay datos nuevos, el pipeline termina sin hacer nada y sin tocar ningún archivo.
-Tras registrar: predict_next (predicción del próximo sorteo, antes de que ocurra) y log
-(conciliación de las predicciones anteriores con los resultados que acaban de llegar).
+Tras registrar: predict_next (predicción del próximo sorteo, antes de que ocurra), log
+(conciliación de las predicciones anteriores con los resultados que acaban de llegar) y replay
+(el mismo cálculo de la conciliación sobre los sorteos del último año, reentrenando en cada uno).
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ class PipelineResult:
     entrenados: dict[str, str] = field(default_factory=dict)  # juego -> versión registrada
     predicciones: list[str] = field(default_factory=list)  # ids registrados en esta corrida
     conciliadas: list[str] = field(default_factory=list)
+    simulados: int = 0  # sorteos agregados a la simulación del registro en vivo
 
     @property
     def nada_que_hacer(self) -> bool:
@@ -62,6 +64,7 @@ def run_pipeline(
         if row is not None:
             result.predicciones.append(row["prediccion_id"])
     result.conciliadas = [r["prediccion_id"] for r in stages.log(paths, now)]
+    result.simulados = stages.replay(paths, cfg)
     logger.info(
         "Pipeline completo: modelos %s | predicciones %s | conciliadas %s",
         result.entrenados,

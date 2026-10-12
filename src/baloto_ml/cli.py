@@ -87,6 +87,11 @@ def cmd_log(args: argparse.Namespace, paths: Paths) -> int:
     return 0
 
 
+def cmd_replay(args: argparse.Namespace, paths: Paths) -> int:
+    stages.replay(paths, PipelineConfig.from_env())
+    return 0
+
+
 def cmd_pipeline(args: argparse.Namespace, paths: Paths) -> int:
     overrides: dict = {}
     if args.web:
@@ -150,6 +155,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("log", aliases=["reconcile"], help="8. concilia predicciones y resultados")
     p.set_defaults(func=cmd_log)
+
+    p = sub.add_parser(
+        "replay",
+        help="9. simula el registro en vivo sobre los sorteos del último año (incremental)",
+    )
+    p.set_defaults(func=cmd_replay)
 
     p = sub.add_parser(
         "pipeline", help="todas las etapas; solo reentrena si hay sorteos nuevos validados"
