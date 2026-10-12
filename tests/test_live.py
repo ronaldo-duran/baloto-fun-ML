@@ -13,15 +13,20 @@ from helpers import write_raw_csv
 from baloto_ml.config import EXPECTED_HITS, EvalConfig, Paths
 from baloto_ml.data.store import read_draws, read_json, write_draws
 from baloto_ml.data.synthetic import synthetic_history
+from baloto_ml.evaluation.significance import play_score_percentile
 from baloto_ml.live.log import (
     BALL_PROB_COLS,
     PREDICTION_COLUMNS,
     RECONCILIATION_COLUMNS,
+    RESULT_SCORE_COLUMNS,
+    SUPER_PROB_COLS,
+    add_columns,
     is_append_only,
     parse_combination,
     read_log,
 )
 from baloto_ml.live.predict import deadline_for, next_draw_forecast, predict_next
+from baloto_ml.live.reconcile import upgrade_reconciliation_log
 from baloto_ml.models.base import GameData
 from baloto_ml.pipeline import stages
 from baloto_ml.pipeline.orchestrator import run_pipeline
@@ -118,10 +123,21 @@ def test_new_result_is_reconciled_and_next_draw_predicted(live: Paths) -> None:
     assert r["aciertos"] == len(set(real) & set(suggested))
     assert parse_combination(r["resultado"]) == real
     assert r["aciertos_esperados"] == pytest.approx(EXPECTED_HITS, abs=1e-6)
+    p = pred[pred["prediccion_id"] == "baloto-1060"].iloc[0]
+    score, pct = play_score_percentile(
+        p[BALL_PROB_COLS].to_numpy(dtype=float),
+        p[SUPER_PROB_COLS].to_numpy(dtype=float),
+        real,
+        int(actual["superbalota"]),
+    )
+    assert r["puntaje_resultado"] == pytest.approx(score, abs=1e-6)
+    assert r["percentil_resultado"] == pytest.approx(pct, abs=0.01)
+    assert 0 <= r["percentil_resultado"] <= 100
 
     summary = read_json(live.live_summary)["juegos"]["baloto"]
     assert summary["conciliadas"] == 1 and summary["aciertos"] == r["aciertos"]
     assert summary["aciertos_esperados_azar"] == pytest.approx(EXPECTED_HITS, abs=1e-4)
+    assert summary["percentil_resultado_medio"] == pytest.approx(r["percentil_resultado"])
     assert [p["n_sorteo"] for p in summary["pendientes"]] == [1061]
 
 
@@ -143,7 +159,38 @@ def test_stale_data_never_predicts_the_past(live: Paths) -> None:
     assert len(read_draws(live.processed_draws)) == 2 * (N0 + 1)
 
 
+def test_old_log_gets_result_scores_without_touching_its_cells(live: Paths) -> None:
+    """Un registro de antes de las columnas de puntaje se completa: ninguna celda cambia."""
+    add_next_draw(live)
+    run_pipeline(live, CFG, now=before_deadline(N0 + 1))
+    current = live.reconciliation_log.read_text(encoding="utf-8")
+    k = len(RESULT_SCORE_COLUMNS)
+    old = "".join(",".join(line.split(",")[:-k]) + "\n" for line in current.splitlines())
+    live.reconciliation_log.write_text(old, encoding="utf-8", newline="")
+
+    assert upgrade_reconciliation_log(live) == 2
+    upgraded = live.reconciliation_log.read_text(encoding="utf-8")
+    assert upgraded == current  # los mismos valores que al conciliar con las columnas nuevas
+    assert is_append_only(old, upgraded)
+    assert upgrade_reconciliation_log(live) == 0  # ya al día: no hace nada
+
+
+def test_add_columns_keeps_every_cell(tmp_path) -> None:
+    path = tmp_path / "log.csv"
+    path.write_text("a,b\n1,0.10\n2,x\n", encoding="utf-8", newline="")
+    add_columns(path, ["c"], [[3.5], ["y"]])
+    assert path.read_text(encoding="utf-8") == "a,b,c\n1,0.10,3.5\n2,x,y\n"
+    with pytest.raises(ValueError):
+        add_columns(path, ["d"], [[1]])  # falta el valor de una fila
+
+
 def test_is_append_only() -> None:
     assert is_append_only("a,b\n1,2\n", "a,b\n1,2\n3,4\n")
     assert not is_append_only("a,b\n1,2\n", "a,b\n1,9\n3,4\n")
     assert not is_append_only("a,b\n1,2\n", "a,b\n")
+    # Columnas nuevas al final: vale solo si todas las celdas anteriores siguen iguales.
+    assert is_append_only("a,b\n1,2\n", "a,b,c\n1,2,x\n3,4,y\n")
+    assert not is_append_only("a,b\n1,2\n", "a,b,c\n1,9,x\n")
+    assert not is_append_only("a,b\n1,2\n", "a,c,b\n1,x,2\n")
+    assert not is_append_only("a,b\n1,2\n", "a,b,c\n1,2\n")  # una fila sin la celda nueva
+    assert not is_append_only("a,b\n1,2\n", "a,b\n1,2,x\n")  # una celda sin columna

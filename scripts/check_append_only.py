@@ -1,8 +1,9 @@
 """Verifica que los registros en vivo solo crecieron respecto a una revisión de git.
 
 Uso: uv run python scripts/check_append_only.py [--base HEAD]
-Sale con código 1 si alguna fila existente cambió o desapareció. Se corre en CI antes de
-hacer commit de un registro actualizado.
+Sale con código 1 si alguna celda existente cambió o desapareció (agregar filas al final, o
+columnas al final de cada fila, está permitido). Se corre en CI antes de hacer commit de un
+registro actualizado.
 """
 
 from __future__ import annotations
@@ -46,10 +47,11 @@ def main(argv: list[str]) -> int:
             continue
         new = path.read_text(encoding="utf-8").replace("\r\n", "\n")
         if is_append_only(old, new):
-            added = new[len(old) :].count("\n")
-            logger.info("%s: append-only OK (%d filas nuevas)", rel, added)
+            rows = new.count("\n") - old.count("\n")
+            cols = new.split("\n", 1)[0].count(",") - old.split("\n", 1)[0].count(",")
+            logger.info("%s: append-only OK (%d filas y %d columnas nuevas)", rel, rows, cols)
         else:
-            logger.error("%s: se modificaron filas existentes respecto a %s", rel, args.base)
+            logger.error("%s: se modificaron celdas existentes respecto a %s", rel, args.base)
             ok = False
     return 0 if ok else 1
 

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from baloto_ml.config import EXPECTED_HITS, JUEGOS, P_SUPER
+from baloto_ml.config import EXPECTED_HITS, JACKPOT_ODDS, JUEGOS, P_SUPER
 from baloto_ml.data.calendar import COT
 from baloto_ml.evaluation.stats import hits_variance
 
@@ -55,7 +55,7 @@ else:
             continue
         n = len(r)
         hits, sb_hits = int(r["aciertos"].sum()), int(r["acierto_superbalota"].sum())
-        m1, m2, m3 = st.columns(3)
+        m1, m2, m3, m4 = st.columns(4)
         m1.metric("Sorteos con resultado", c.es_int(n))
         m2.metric(
             "Aciertos acumulados (5 balotas)",
@@ -68,6 +68,14 @@ else:
             c.es_int(sb_hits),
             delta=f"azar: {c.es(n * P_SUPER, 2)}",
             delta_color="off",
+        )
+        m4.metric(
+            "Percentil medio del resultado",
+            f"{r['percentil_resultado'].mean():.0f}",
+            delta="azar: 50",
+            delta_color="off",
+            help="Dónde cayó, en promedio, la combinación ganadora entre todas las jugadas "
+            "posibles ordenadas por el puntaje que les daba el modelo antes del sorteo.",
         )
         i = np.arange(1, n + 1)
         cum = pd.DataFrame(
@@ -85,9 +93,23 @@ else:
                     "resultado": r["resultado"] + " + " + r["superbalota_real"].astype(str),
                     "aciertos": r["aciertos"],
                     "superbalota": r["acierto_superbalota"].map({1: "sí", 0: "no"}),
+                    "puntaje del resultado": r["puntaje_resultado"],
+                    "percentil del resultado": r["percentil_resultado"],
                 }
             ).iloc[::-1],
             hide_index=True,
+            column_config={
+                "puntaje del resultado": st.column_config.NumberColumn(format="%+.3f"),
+                "percentil del resultado": st.column_config.NumberColumn(format="%.1f"),
+            },
+        )
+        st.caption(
+            "**Puntaje y percentil del resultado:** lo que el modelo opinaba, antes del sorteo, de "
+            "la combinación que salió. El puntaje es la suma de log(p / p_azar) de sus 5 balotas y "
+            "su superbalota (0 = igual que el azar). El percentil la ubica entre las "
+            f"{c.es_int(JACKPOT_ODDS)} jugadas posibles: 100 sería la favorita del modelo. Si el "
+            "modelo no sabe nada, es un número al azar entre 0 y 100: la mitad de las veces cae "
+            "entre 25 y 75, y una de cada diez por encima de 90."
         )
 
 st.subheader("Reglas del registro", divider="gray")
@@ -100,8 +122,8 @@ st.markdown(
 - Los archivos
   [`predictions_log.csv`]({c.REPO_URL}/blob/main/predictions/predictions_log.csv) y
   [`reconciliation_log.csv`]({c.REPO_URL}/blob/main/predictions/reconciliation_log.csv) son
-  **append-only**: el CI verifica en cada actualización que las filas anteriores no cambiaron. El
-  historial de git hace de sello de tiempo.
+  **append-only**: el CI verifica en cada actualización que ninguna celda anterior cambió (solo
+  se agregan filas, o columnas nuevas al final). El historial de git hace de sello de tiempo.
 - La referencia es el azar: **{c.es(EXPECTED_HITS)} aciertos por sorteo** jugando 5 números y
   1 superbalota de cada 16. La banda gris marca lo esperable por azar con 95 % de probabilidad.
 """

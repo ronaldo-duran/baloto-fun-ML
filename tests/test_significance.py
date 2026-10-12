@@ -11,6 +11,7 @@ from baloto_ml.evaluation.significance import (
     outcome_null,
     outcome_significance,
     permute_draws,
+    play_score_percentile,
     resampling_null,
     significance_for_game,
     synthetic_draws,
@@ -67,6 +68,29 @@ def test_winner_percentiles() -> None:
     oracle = Probabilities(np.clip(y_b * 0.6 + 0.05, 0, 1), np.clip(y_s * 0.6 + 0.02, 0, 1))
     high = winner_percentiles(oracle, y_b, y_s, np.random.default_rng(0), 500)
     assert (high > 0.99).all()
+
+
+def test_play_score_percentile_is_exact() -> None:
+    p_b, p_s = uniform_probs(1).balls[0], uniform_probs(1).sb[0]
+    assert play_score_percentile(p_b, p_s, [1, 2, 3, 4, 5], 1) == (0.0, 50.0)  # todo empata
+
+    rng = np.random.default_rng(7)
+    p_b = rng.dirichlet(np.ones(43)) * 5
+    p_s = rng.dirichlet(np.ones(16))
+    order_b, order_s = np.argsort(p_b) + 1, np.argsort(p_s) + 1
+    _, top = play_score_percentile(p_b, p_s, order_b[-5:], int(order_s[-1]))
+    _, bottom = play_score_percentile(p_b, p_s, order_b[:5], int(order_s[0]))
+    assert top > 99.9999 and bottom < 1e-4  # la favorita y la peor de las 15.401.568
+
+    # Coincide con la estimación Monte Carlo y con el puntaje de combination_scores.
+    y_b, y_s = outcomes(1, seed=3)
+    balls, sb = np.flatnonzero(y_b[0]) + 1, int(np.flatnonzero(y_s[0])[0]) + 1
+    score, pct = play_score_percentile(p_b, p_s, balls, sb)
+    probs = Probabilities(p_b[None], p_s[None])
+    mc = winner_percentiles(probs, y_b, y_s, np.random.default_rng(0), 200_000)[0]
+    assert pct / 100 == pytest.approx(mc, abs=0.005)
+    expected = np.log(p_b[balls - 1] / P_BALL).sum() + np.log(p_s[sb - 1] / P_SUPER)
+    assert score == pytest.approx(expected)
 
 
 def test_resamplers_keep_structure(history) -> None:

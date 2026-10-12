@@ -278,12 +278,18 @@ predicción queda escrita, con fecha y hora, **antes** del sorteo, y nunca se mo
   nada: sería predecir el pasado.
 - **`log`** (o `reconcile`), cuando llega el resultado, agrega a
   `predictions/reconciliation_log.csv` los aciertos de la combinación sugerida, el acierto de la
-  superbalota y la log-loss frente al azar. `reports/live_summary.json` acumula los aciertos del
-  modelo frente a los esperados (0,581 por sorteo) con su banda del 95 %.
-- **Append-only verificable.** Los dos archivos solo crecen: el código nunca reescribe filas y
-  `scripts/check_append_only.py` (`make check-log`) comprueba contra git que el contenido
-  anterior sea un prefijo exacto del nuevo. El CI lo corre antes de cada commit, y el historial de
-  git más los logs de GitHub Actions sirven de sello de tiempo externo.
+  superbalota y la log-loss frente al azar. También guarda dónde cayó la combinación **ganadora**
+  según el modelo antes del sorteo: su puntaje (`puntaje_resultado`, la suma de log(p / p_azar) de
+  sus 5 + 1 números) y su percentil exacto entre las 15.401.568 jugadas posibles
+  (`percentil_resultado`). Sin señal, ese percentil es un número al azar entre 0 y 100.
+  `reports/live_summary.json` acumula los aciertos del modelo frente a los esperados (0,581 por
+  sorteo) con su banda del 95 %, y el percentil medio del resultado frente a 50.
+- **Append-only verificable.** Los dos archivos solo crecen: el código nunca reescribe una celda y
+  `scripts/check_append_only.py` (`make check-log`) comprueba contra git que el contenido anterior
+  siga intacto. Lo único permitido es agregar filas al final o columnas al final de cada fila; así
+  se agregaron el puntaje y el percentil del resultado en octubre de 2026, calculados para las
+  filas anteriores con las probabilidades que ya estaban registradas. El CI lo corre antes de cada
+  commit, y el historial de git más los logs de GitHub Actions sirven de sello de tiempo externo.
 
 ## Automatización con GitHub Actions
 
@@ -317,7 +323,8 @@ responsable visible en todas las páginas:
    verdad ganaron caen, en promedio, en el percentil 49 de ese puntaje. Además, un backtest cuenta
    cuántos aciertos habría tenido tu jugada en cada sorteo desde 2021, frente a lo esperado por azar.
 2. **Registro en vivo.** Muestra las predicciones pendientes y los aciertos acumulados del modelo
-   frente al azar, con su banda del 95 %.
+   frente al azar, con su banda del 95 %, y en cada sorteo el puntaje y el percentil que el modelo
+   le daba, antes del sorteo, a la combinación que ganó.
 3. **Método y resultados.** Validación, significancia, control positivo, la trampa y las
    lecciones, con las cifras de `reports/`.
 

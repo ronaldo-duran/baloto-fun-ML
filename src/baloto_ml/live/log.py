@@ -3,12 +3,15 @@
 - predictions/predictions_log.csv: lo que el modelo dijo ANTES de cada sorteo.
 - predictions/reconciliation_log.csv: esa predicción comparada con el resultado real.
 
-La única operación de escritura es agregar filas al final. `is_append_only` permite verificar
-en CI que el contenido anterior del archivo es un prefijo exacto del nuevo.
+La operación normal de escritura es agregar filas al final. El esquema solo puede crecer con
+columnas nuevas al final de cada fila (`add_columns`), sin tocar ninguna celda existente.
+`is_append_only` permite verificar en CI que nada de lo anterior cambió.
 """
 
 from __future__ import annotations
 
+import csv
+import io
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -33,6 +36,9 @@ PREDICTION_COLUMNS = [
     *BALL_PROB_COLS,
     *SUPER_PROB_COLS,
 ]
+# Dónde cayó la combinación ganadora según el modelo ANTES del sorteo (agregadas en octubre de
+# 2026; las filas anteriores se completaron con las probabilidades que ya estaban registradas).
+RESULT_SCORE_COLUMNS = ["puntaje_resultado", "percentil_resultado"]
 RECONCILIATION_COLUMNS = [
     "prediccion_id",
     "conciliada_utc",
@@ -52,6 +58,7 @@ RECONCILIATION_COLUMNS = [
     "log_loss_constante",
     "log_loss_superbalota",
     "log_loss_superbalota_constante",
+    *RESULT_SCORE_COLUMNS,
 ]
 
 
@@ -91,6 +98,32 @@ def append_rows(path: Path, rows: Sequence[dict], columns: list[str]) -> None:
         f.write(text)
 
 
+def add_columns(path: Path, columns: Sequence[str], values: Sequence[Sequence]) -> None:
+    """Agrega columnas AL FINAL de un registro existente: cada fila conserva sus celdas tal
+    cual (byte a byte) y gana las nuevas. Es la única forma permitida de cambiar el esquema."""
+    lines = path.read_text(encoding="utf-8").replace("\r\n", "\n").rstrip("\n").split("\n")
+    if len(lines) - 1 != len(values):
+        raise ValueError(f"{path}: {len(lines) - 1} filas y {len(values)} juegos de valores")
+    out = [lines[0] + "," + ",".join(columns)]
+    for line, vals in zip(lines[1:], values, strict=True):
+        if len(vals) != len(columns):
+            raise ValueError(f"{path}: se esperaban {len(columns)} valores por fila")
+        out.append(line + "," + ",".join(str(v) for v in vals))
+    path.write_text("\n".join(out) + "\n", encoding="utf-8", newline="")
+
+
 def is_append_only(old: str, new: str) -> bool:
-    """True si `new` conserva `old` intacto al principio (solo se agregaron filas)."""
-    return new.startswith(old)
+    """True si `new` conserva `old` intacto: solo se agregaron filas al final y, si acaso,
+    columnas al final de cada fila. Ninguna celda existente cambió ni desapareció."""
+    if new.startswith(old):
+        return True
+    old_rows = list(csv.reader(io.StringIO(old)))
+    new_rows = list(csv.reader(io.StringIO(new)))
+    if not old_rows or len(new_rows) < len(old_rows):
+        return False
+    width, new_width = len(old_rows[0]), len(new_rows[0])
+    if new_width <= width:  # sin columnas nuevas solo vale el prefijo exacto
+        return False
+    return all(
+        n[:width] == o and len(n) == new_width for o, n in zip(old_rows, new_rows, strict=False)
+    )

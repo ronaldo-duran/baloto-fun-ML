@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
+from functools import cache
+from itertools import combinations
 
 import numpy as np
 import pandas as pd
@@ -124,6 +126,29 @@ def combination_scores(p_balls: np.ndarray, p_sb: np.ndarray) -> tuple[np.ndarra
         np.log(np.clip(p_balls, EPS, 1) / P_BALL),
         np.log(np.clip(p_sb, EPS, 1) / P_SUPER),
     )
+
+
+@cache
+def _ball_combinations() -> np.ndarray:
+    """Las C(43, 5) = 962.598 combinaciones de balotas (índices 0-42)."""
+    return np.array(list(combinations(range(N_BALLS), BALLS_PER_DRAW)), dtype=np.int8)
+
+
+def play_score_percentile(
+    p_balls: np.ndarray, p_sb: np.ndarray, balls: Sequence[int], sb: int
+) -> tuple[float, float]:
+    """Puntaje de una jugada (números desde 1) y su percentil EXACTO (0-100) entre las
+    15.401.568 jugadas posibles, con las probabilidades de UN sorteo. Los empates cuentan la
+    mitad, así que con probabilidades uniformes toda jugada queda en el percentil 50."""
+    sw, ss = combination_scores(np.asarray(p_balls)[None], np.asarray(p_sb)[None])
+    sw, ss = sw[0], ss[0]
+    score = float(sw[np.asarray(balls) - 1].sum() + ss[sb - 1])
+    sums = np.sort(sw[_ball_combinations()].sum(axis=1))
+    t = score - ss  # lo que deben sumar las 5 balotas para empatar, con cada superbalota
+    below = np.searchsorted(sums, t - 1e-9, "left")
+    upto = np.searchsorted(sums, t + 1e-9, "right")
+    rank = below.sum() + 0.5 * (upto - below).sum()
+    return score, float(100 * rank / (len(sums) * N_SUPER))
 
 
 def winner_percentiles(

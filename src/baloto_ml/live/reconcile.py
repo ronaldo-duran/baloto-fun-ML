@@ -1,5 +1,9 @@
 """log (reconcile): compara cada predicción registrada con el resultado real y acumula los
-aciertos frente a lo esperado por azar. También es append-only."""
+aciertos frente a lo esperado por azar. También es append-only.
+
+Además de los aciertos de la combinación sugerida, guarda dónde cayó la combinación GANADORA
+según el modelo antes del sorteo: su puntaje y su percentil exacto entre las 15.401.568 jugadas
+posibles. Si el modelo no sabe nada, ese percentil es un número al azar entre 0 y 100."""
 
 from __future__ import annotations
 
@@ -14,12 +18,15 @@ from baloto_ml.config import EXPECTED_HITS, JUEGOS, N_SUPER, P_BALL, P_SUPER, Pa
 from baloto_ml.data.schema import BALL_COLS, SUPER_COL
 from baloto_ml.data.store import read_draws, write_json
 from baloto_ml.evaluation.metrics import EPS, LOG_LOSS_BALL_CONST, LOG_LOSS_SB_CONST
+from baloto_ml.evaluation.significance import play_score_percentile
 from baloto_ml.evaluation.stats import hits_variance
 from baloto_ml.live.log import (
     BALL_PROB_COLS,
     PREDICTION_COLUMNS,
     RECONCILIATION_COLUMNS,
+    RESULT_SCORE_COLUMNS,
     SUPER_PROB_COLS,
+    add_columns,
     append_rows,
     format_combination,
     parse_combination,
@@ -27,6 +34,17 @@ from baloto_ml.live.log import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def result_score(pred: pd.Series, balls: list[int], sb: int) -> dict:
+    """Puntaje y percentil de la combinación ganadora con las probabilidades registradas."""
+    score, pct = play_score_percentile(
+        pred[BALL_PROB_COLS].to_numpy(dtype=float),
+        pred[SUPER_PROB_COLS].to_numpy(dtype=float),
+        balls,
+        sb,
+    )
+    return {"puntaje_resultado": round(score, 6), "percentil_resultado": round(pct, 2)}
 
 
 def _reconcile_row(pred: pd.Series, actual: pd.Series, now: datetime) -> dict:
@@ -56,12 +74,44 @@ def _reconcile_row(pred: pd.Series, actual: pd.Series, now: datetime) -> dict:
         "log_loss_constante": round(LOG_LOSS_BALL_CONST, 6),
         "log_loss_superbalota": round(float(-np.log(q[sb_real - 1] / q.sum())), 6),
         "log_loss_superbalota_constante": round(LOG_LOSS_SB_CONST, 6),
+        **result_score(pred, balls, sb_real),
     }
+
+
+def upgrade_reconciliation_log(paths: Paths) -> int:
+    """Completa el puntaje y el percentil del resultado en un registro anterior a esas columnas.
+
+    Se calculan con las probabilidades que ya estaban en predictions_log.csv antes de cada
+    sorteo, y solo se agregan celdas al final de cada fila: ninguna existente cambia.
+    Devuelve cuántas filas se completaron (0 si el registro ya estaba al día).
+    """
+    path = paths.reconciliation_log
+    if not path.exists():
+        return 0
+    with path.open(encoding="utf-8") as f:
+        header = f.readline().strip().split(",")
+    previous = [c for c in RECONCILIATION_COLUMNS if c not in RESULT_SCORE_COLUMNS]
+    if header != previous:
+        return 0  # al día (o desconocido: read_log lo reportará)
+    old = read_log(path, previous)
+    preds = read_log(paths.predictions_log, PREDICTION_COLUMNS).set_index("prediccion_id")
+    values = []
+    for row in old.itertuples():
+        scored = result_score(
+            preds.loc[row.prediccion_id],
+            parse_combination(row.resultado),
+            int(row.superbalota_real),
+        )
+        values.append([scored[c] for c in RESULT_SCORE_COLUMNS])
+    add_columns(path, RESULT_SCORE_COLUMNS, values)
+    logger.info("%s: puntaje y percentil del resultado completados en %d filas", path, len(old))
+    return len(old)
 
 
 def reconcile(paths: Paths, now: datetime | None = None) -> list[dict]:
     """Agrega una fila por cada predicción cuyo sorteo ya tiene resultado validado."""
     now = now or datetime.now(UTC)
+    upgrade_reconciliation_log(paths)
     preds = read_log(paths.predictions_log, PREDICTION_COLUMNS)
     done = set(read_log(paths.reconciliation_log, RECONCILIATION_COLUMNS)["prediccion_id"])
     draws = read_draws(paths.processed_draws).set_index(["juego", "n_sorteo"])
@@ -82,7 +132,8 @@ def reconcile(paths: Paths, now: datetime | None = None) -> list[dict]:
             )
         rows.append(row)
         logger.info(
-            "%s %d: sugerida %s + %d | resultado %s + %d | %d aciertos (azar: %.3f)",
+            "%s %d: sugerida %s + %d | resultado %s + %d | %d aciertos (azar: %.3f) | "
+            "el resultado quedó en el percentil %.0f del modelo",
             key[0],
             key[1],
             row["combinacion"],
@@ -91,6 +142,7 @@ def reconcile(paths: Paths, now: datetime | None = None) -> list[dict]:
             row["superbalota_real"],
             row["aciertos"],
             EXPECTED_HITS,
+            row["percentil_resultado"],
         )
     append_rows(paths.reconciliation_log, rows, RECONCILIATION_COLUMNS)
     return rows
@@ -122,6 +174,7 @@ def live_summary(paths: Paths) -> dict:
             "banda95_superbalota": [n * P_SUPER - 1.96 * sd_sb, n * P_SUPER + 1.96 * sd_sb],
             "log_loss_medio": float(r["log_loss_balotas"].mean()) if n else None,
             "log_loss_constante": LOG_LOSS_BALL_CONST,
+            "percentil_resultado_medio": float(r["percentil_resultado"].mean()) if n else None,
             "pendientes": [
                 {
                     "n_sorteo": int(row.n_sorteo),
@@ -138,6 +191,7 @@ def live_summary(paths: Paths) -> dict:
         "p_superbalota": P_SUPER,
         "p_balota": P_BALL,
         "n_superbalota": N_SUPER,
+        "percentil_resultado_medio": 50.0,
     }
     return out
 

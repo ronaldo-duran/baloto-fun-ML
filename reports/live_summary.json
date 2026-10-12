@@ -18,6 +18,7 @@
       ],
       "log_loss_medio": 0.357574,
       "log_loss_constante": 0.359445,
+      "percentil_resultado_medio": 57.622,
       "pendientes": [
         {
           "n_sorteo": 2721,
@@ -46,6 +47,7 @@
       ],
       "log_loss_medio": 0.367037,
       "log_loss_constante": 0.359445,
+      "percentil_resultado_medio": 50.526,
       "pendientes": [
         {
           "n_sorteo": 2721,
@@ -61,6 +63,7 @@
     "aciertos_por_sorteo": 0.581395,
     "p_superbalota": 0.0625,
     "p_balota": 0.116279,
-    "n_superbalota": 16
+    "n_superbalota": 16,
+    "percentil_resultado_medio": 50.0
   }
 }
