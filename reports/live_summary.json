@@ -1,60 +1,60 @@
 {
   "juegos": {
     "baloto": {
-      "predicciones": 11,
-      "conciliadas": 10,
+      "predicciones": 12,
+      "conciliadas": 11,
       "aciertos": 9,
-      "aciertos_esperados_azar": 5.81395,
+      "aciertos_esperados_azar": 6.39535,
       "banda95_aciertos": [
-        1.58808,
-        10.0398
+        1.96321,
+        10.8275
       ],
-      "z_aciertos": 1.47772,
+      "z_aciertos": 1.15184,
       "aciertos_superbalota": 2,
-      "aciertos_superbalota_esperados": 0.625,
+      "aciertos_superbalota_esperados": 0.6875,
       "banda95_superbalota": [
-        -0.875312,
-        2.12531
+        -0.886041,
+        2.26104
       ],
-      "log_loss_medio": 0.355672,
+      "log_loss_medio": 0.355591,
       "log_loss_constante": 0.359445,
-      "percentil_resultado_medio": 62.476,
+      "percentil_resultado_medio": 60.5445,
       "pendientes": [
         {
-          "n_sorteo": 2726,
-          "fecha_sorteo": "2026-10-24",
-          "combinacion": "06-10-24-32-42",
-          "superbalota_sugerida": 9,
-          "modelo_version": "2026-10-21_7bbc75c2"
+          "n_sorteo": 2727,
+          "fecha_sorteo": "2026-10-26",
+          "combinacion": "11-20-24-35-42",
+          "superbalota_sugerida": 12,
+          "modelo_version": "2026-10-24_016170e5"
         }
       ]
     },
     "revancha": {
-      "predicciones": 11,
-      "conciliadas": 10,
+      "predicciones": 12,
+      "conciliadas": 11,
       "aciertos": 3,
-      "aciertos_esperados_azar": 5.81395,
+      "aciertos_esperados_azar": 6.39535,
       "banda95_aciertos": [
-        1.58808,
-        10.0398
+        1.96321,
+        10.8275
       ],
-      "z_aciertos": -1.30514,
+      "z_aciertos": -1.50151,
       "aciertos_superbalota": 0,
-      "aciertos_superbalota_esperados": 0.625,
+      "aciertos_superbalota_esperados": 0.6875,
       "banda95_superbalota": [
-        -0.875312,
-        2.12531
+        -0.886041,
+        2.26104
       ],
-      "log_loss_medio": 0.368252,
+      "log_loss_medio": 0.369717,
       "log_loss_constante": 0.359445,
-      "percentil_resultado_medio": 51.042,
+      "percentil_resultado_medio": 47.1927,
       "pendientes": [
         {
-          "n_sorteo": 2726,
-          "fecha_sorteo": "2026-10-24",
-          "combinacion": "13-17-26-27-40",
-          "superbalota_sugerida": 15,
-          "modelo_version": "2026-10-21_443ca2ce"
+          "n_sorteo": 2727,
+          "fecha_sorteo": "2026-10-26",
+          "combinacion": "12-15-17-27-39",
+          "superbalota_sugerida": 11,
+          "modelo_version": "2026-10-24_946a62e1"
         }
       ]
     }
