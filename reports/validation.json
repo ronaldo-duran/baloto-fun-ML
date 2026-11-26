@@ -6,49 +6,49 @@
   "resumen": {
     "juegos": {
       "baloto": {
-        "n_sorteos": 658,
+        "n_sorteos": 660,
         "fecha_min": "2021-05-01",
-        "fecha_max": "2026-11-21",
+        "fecha_max": "2026-11-25",
         "n_sorteo_min": 2081,
-        "n_sorteo_max": 2738,
+        "n_sorteo_max": 2740,
         "sorteos_por_anio": {
           "2021": 70,
           "2022": 105,
           "2023": 104,
           "2024": 104,
           "2025": 136,
-          "2026": 139
+          "2026": 141
         },
         "sorteos_por_dia": {
-          "lunes": 77,
-          "miércoles": 290,
+          "lunes": 78,
+          "miércoles": 291,
           "sábado": 291
         }
       },
       "revancha": {
-        "n_sorteos": 658,
+        "n_sorteos": 660,
         "fecha_min": "2021-05-01",
-        "fecha_max": "2026-11-21",
+        "fecha_max": "2026-11-25",
         "n_sorteo_min": 2081,
-        "n_sorteo_max": 2738,
+        "n_sorteo_max": 2740,
         "sorteos_por_anio": {
           "2021": 70,
           "2022": 105,
           "2023": 104,
           "2024": 104,
           "2025": 136,
-          "2026": 139
+          "2026": 141
         },
         "sorteos_por_dia": {
-          "lunes": 77,
-          "miércoles": 290,
+          "lunes": 78,
+          "miércoles": 291,
           "sábado": 291
         }
       }
     },
     "cruce_baloto_revancha": {
       "comparable": true,
-      "sorteos_en_ambos": 658,
+      "sorteos_en_ambos": 660,
       "solo_baloto": [],
       "solo_revancha": [],
       "misma_numeracion_distinta_fecha": [],
